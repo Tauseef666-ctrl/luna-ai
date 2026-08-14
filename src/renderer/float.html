@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>LUNA Float</title>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' ws:; font-src 'self' data:"
+    />
+    <link rel="stylesheet" href="./src/theme.css" />
+  </head>
+  <body class="float-body">
+    <div class="float-frame glass">
+      <div class="float-canvas-wrap">
+        <canvas id="float-canvas"></canvas>
+        <div id="float-status" class="float-status">Ready to assist...</div>
+        <div id="float-subtitle" class="float-subtitle"></div>
+      </div>
+      <div class="ptt-hint">push-to-talk (spec 32.3)</div>
+      <div class="float-toolbar">
+        <button id="btn-pin" title="Always on top">Pin</button>
+        <button id="btn-mic" title="Microphone">Mic</button>
+        <button id="btn-close" title="Close">Close</button>
+      </div>
+    </div>
+    <script type="module" src="./src/float.ts"></script>
+  </body>
+</html>

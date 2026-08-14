@@ -1,0 +1,51 @@
+# ---- Dependencies ----
+node_modules/
+
+# ---- Build output ----
+out/
+dist/
+release/
+
+# ---- Logs ----
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# ---- OS junk ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- AI workspace content (never committed, spec 30.1) ----
+models/
+characters/*
+!characters/.gitkeep
+animations/*
+!animations/.gitkeep
+voices/*
+!voices/.gitkeep
+projects/*
+!projects/.gitkeep
+memory/*
+!memory/.gitkeep
+config/*
+!config/.gitkeep
+reference/*
+!reference/.gitkeep
+
+# ---- Model / asset weight files anywhere ----
+*.gguf
+*.safetensors
+*.onnx
+*.onnx.json
+*.bin
+*.vrm
+*.glb
+*.fbx
+
+# ---- Secrets ----
+.env
+.env.*
+*.key
+*.pem
+!*.key.example

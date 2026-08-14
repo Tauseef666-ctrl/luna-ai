@@ -1,0 +1,23 @@
+appId: com.lunaai.desktop
+productName: LUNA
+directories:
+  output: release
+  buildResources: build
+files:
+  - out/**/*
+  - resources/**/*
+  - package.json
+asar: true
+win:
+  target:
+    - nsis
+  executableName: LUNA
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: LUNA
+artifactName: ${productName}-Setup-${version}.${ext}
+publish: null

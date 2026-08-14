@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>LUNA</title>
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' ws:; font-src 'self' data:"
+    />
+    <link rel="stylesheet" href="./src/theme.css" />
+  </head>
+  <body>
+    <div id="app" class="shell">
+      <aside class="sidebar">
+        <div class="brand">LUNA</div>
+        <nav id="nav">
+          <button class="nav-item active" data-view="dashboard"><span class="glyph">◉</span>Dashboard</button>
+          <button class="nav-item" data-view="chat"><span class="glyph">✉</span>Chat</button>
+          <button class="nav-item" data-view="projects"><span class="glyph">▤</span>Projects</button>
+          <button class="nav-item" data-view="ai"><span class="glyph">⬢</span>AI Models</button>
+          <button class="nav-item" data-view="memory"><span class="glyph">◈</span>Memory</button>
+          <button class="nav-item" data-view="shoya"><span class="glyph">⌘</span>Shoya</button>
+          <button class="nav-item" data-view="research"><span class="glyph">⌕</span>Research</button>
+          <button class="nav-item" data-view="automation"><span class="glyph">⚙</span>Automation</button>
+          <button class="nav-item" data-view="settings"><span class="glyph">⚙</span>Settings</button>
+        </nav>
+        <div class="sidebar-foot">v0.1.0 · first build</div>
+      </aside>
+
+      <main class="content">
+        <header class="topbar">
+          <span id="luna-badge" class="badge luna"><span class="dot"></span>LUNA • OFFLINE</span>
+          <span id="shoya-badge" class="badge shoya"><span class="dot"></span>Shoya • OFFLINE</span>
+          <span class="spacer"></span>
+          <span id="model-label" class="model-label">model: —</span>
+          <button id="btn-float" class="icon-btn">Float</button>
+        </header>
+
+        <section id="view-dashboard" class="view active">
+          <div class="stage">
+            <div class="stage-3d">
+              <canvas id="luna-canvas"></canvas>
+              <div class="status-card glass">
+                <div id="luna-ring" class="ring"></div>
+                <div>
+                  <h3>LUNA</h3>
+                  <p id="status-line">Ready to assist...</p>
+                </div>
+              </div>
+              <div class="placeholder-note glass">placeholder rig · spec 32.1</div>
+            </div>
+          </div>
+        </section>
+
+        <section id="view-chat" class="view">
+          <div class="chat-wrap">
+            <div id="chat-log" class="chat-log"></div>
+            <form id="chat-form" class="chat-form">
+              <input id="chat-input" placeholder="Message LUNA... (Enter to send)" autocomplete="off" />
+              <button type="submit">Send</button>
+            </form>
+          </div>
+        </section>
+
+        <section id="view-projects" class="view">
+          <div class="panel">
+            <h2>PROJECTS</h2>
+            <p class="sub">Workspace projects detected at <span id="projects-root"></span></p>
+            <div id="projects-list" class="empty-state">No projects yet. Create a folder inside the workspace `projects/`.</div>
+          </div>
+        </section>
+
+        <section id="view-ai" class="view">
+          <div class="panel">
+            <h2>AI MODELS</h2>
+            <p class="sub">Detected local models (Ollama API: <span id="ollama-url"></span>)</p>
+            <div id="ai-list" class="empty-state">Scanning workspace...</div>
+          </div>
+        </section>
+
+        <section id="view-memory" class="view">
+          <div class="panel">
+            <h2>MEMORY</h2>
+            <p class="sub">Short-term, session, long-term and project memory (spec 6)</p>
+            <div class="empty-state">Memory engine lands in the next build milestone (M3).</div>
+          </div>
+        </section>
+
+        <section id="view-shoya" class="view">
+          <div class="panel">
+            <h2>SHOYA</h2>
+            <p class="sub">Online coding companion (spec 16–17)</p>
+            <div class="empty-state">Shoya integration lands in milestone M4.</div>
+          </div>
+        </section>
+
+        <section id="view-research" class="view">
+          <div class="panel">
+            <h2>RESEARCH</h2>
+            <p class="sub">Online + offline research assistant (spec 19–20)</p>
+            <div class="empty-state">Research agent lands in milestone M4.</div>
+          </div>
+        </section>
+
+        <section id="view-automation" class="view">
+          <div class="panel">
+            <h2>AUTOMATION</h2>
+            <p class="sub">Windows control, VS Code and workflow automation (spec 13–15)</p>
+            <div class="empty-state">Automation tools land in milestone M3.</div>
+          </div>
+        </section>
+
+        <section id="view-settings" class="view">
+          <div class="panel">
+            <h2>SETTINGS</h2>
+            <p class="sub">Asset manager — everything auto-detected in the workspace (spec 3)</p>
+            <div id="asset-root"></div>
+            <div id="asset-llm" class="asset-section"></div>
+            <div id="asset-stt" class="asset-section"></div>
+            <div id="asset-tts" class="asset-section"></div>
+            <div id="asset-wakeword" class="asset-section"></div>
+            <div id="asset-chars" class="asset-section"></div>
+            <div id="asset-anim" class="asset-section"></div>
+            <div id="asset-ref" class="asset-section"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="./src/dashboard.ts"></script>
+  </body>
+</html>

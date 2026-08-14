@@ -1,0 +1,11 @@
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
+*.exe binary
+*.onnx binary
+*.bin binary
+*.gguf binary
+*.glb binary
+*.fbx binary
+*.vrm binary
