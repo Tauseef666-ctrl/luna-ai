@@ -13,8 +13,8 @@ Dev workflow: VS Code (native Windows) + Shoya coding agent → Git → GitHub A
 
 | # | Decision | Status |
 |---|---|---|
-| 32.1 | **No 3D models exist; Shoya generates them.** Pipeline chosen (free): **MakeHuman** (open-source humanoid generator, scriptable via Python API) → **Mixamo** auto-rig + free animation library → export `.glb`/FBX clips. Backup: **Ready Player Me** free tier. Dev-time-only deps, **removed after generation**. Placeholder primitive rig shipped in v0.1.0 until assets exist. App asset loading stays generic. | Placeholder in; generation pending |
-| 32.2 | **Local inference = Ollama local REST API** (`http://localhost:11434`). Client module implemented. No raw GGUF loading / `node-llama-cpp` for v1. | Client done; Ollama binary install pending |
+| 32.1 | **User supplies final 3D models** (`.glb`/`.gltf` dropped into `characters/`); app loads them generically (Babylon `SceneLoader`), maps clips to states by name, lip-syncs (jaw bone or ARKit visemes), applies motion overlay. Placeholder primitive rig remains the fallback until a model is assigned in Settings. | Placeholder in; generic loader in v0.3.0; models pending user |
+| 32.2 | **Local inference = Ollama local REST API** (`http://localhost:11434`). Client module implemented. No raw GGUF loading / `node-llama-cpp` for v1. | Client done (incl. streaming); Ollama binary install pending |
 | 32.3 | **Wake word: Push-to-Talk default.** Do NOT reuse `hey_jarvis` models. "Hey Luna" = stretch goal via Picovoice Porcupine custom keyword. | Push-to-talk noted; voice pipeline pending |
 | 32.4 | **Renderer: Babylon.js** (not Three.js). | Done — v9.21.1 in use |
 | 32.5 | **GitHub repository** — URL recorded above, wired into the release workflow. | Done |
@@ -57,12 +57,49 @@ Shipped and verified (app launches; Babylon WebGL2 renderer runs):
 
 ---
 
+## 2b. Build Status — v0.2.0 (Memory + streaming + asset assignment)
+
+Shipped and verified (typecheck ✓, build ✓, app boots clean):
+- [x] **Streaming chat** — Ollama `/api/chat` stream (SSE) → `chat:token` events → live text in the chat bubble (spec 32.2)
+- [x] **Memory engine (spec 6–7)** — `src/main/memory.ts`, persisted at `<aiRoot>\memory\luna-memory.json`:
+  short-term (bounded), session (auto-expires 7 days), long-term, project (keyed)
+- [x] **Sessions (spec 6, 7)** — full conversation history in `<aiRoot>\memory\luna-sessions.json`:
+  auto-persisted per turn, restored on app start, **multi-turn context** fed to the model, "New chat" starts a fresh session
+- [x] **Session Save / Unsave / Remove** — Save keeps a session forever · Unsave returns it to 7-day temp · Remove deletes it
+- [x] **Pin/unpin** on memory entries — pinned memories never expire (session-tier expiry cleared)
+- [x] Memory **keyword recall** injected into the chat system prompt (embeddings/`nomic-embed-text` deferred until Ollama online)
+- [x] Memory manager UI: search, add (tier + optional project), view, delete, pin/unpin, clear sessions/clear all, prune expired, export JSON
+- [x] Sessions UI in Memory view: list (name, turns, updated, saved/temp badge) with Save/Unsave/Remove controls
+- [x] **Asset assignment** — Settings: assign active LLM + TTS voice to LUNA and to Shoya (persisted in config, chat uses LUNA's assigned model)
+- [x] **Re-scan workspace** button in Settings
+- [x] Prettier config + `format`/`format:check` scripts
+
+**Deferred/blocked:** ESLint (typescript-eslint peer conflict with TypeScript 7: `>=4.8.4 <6.1.0` — revisit when supported); auto-rescan on `aiRoot` change (path change UI not built yet).
+
+---
+
+## 2c. Build Status — v0.3.0 (Character view + generic model pipeline + design pass)
+
+Shipped and verified (typecheck ✓, build ✓, browser design preview via `npm run design`):
+- [x] **Generic 3D model loader** — `character.ts` loads any user-supplied `.glb/.gltf` (Babylon `SceneLoader`): bounding-box fit, clip→state mapping (idle/listening/thinking/speaking/working by name), jaw morph/bone lip-sync, breathing + idle life overlay
+- [x] **Asset serving via IPC** — `assets:image` (reference art → base64 data URL, `reference/` whitelisted) + `assets:binary` (models/animations → `Uint8Array`, `characters|animations|models/` whitelisted), exposed on preload as `window.luna.assets`
+- [x] **Character view** — new sidebar tab: LUNA + Shoya cards with concept art (img1–img4), current model/voice/LLM assignment, 5-step pipeline checklist (art → model → rig/anim → lip-sync → gestures)
+- [x] **Settings: character-model assignment** — LUNA/Shoya dropdowns from `scan.characters` → `config.character.{luna,shoya}.idle`; changing LUNA's model hot-reloads the dashboard rig; float window loads assigned model on open
+- [x] **Browser design preview** — `npm run design` serves `src/renderer` at `http://localhost:5173` via `mock-bridge.ts` (full LunaBridge mock: scans, sessions, memory, streaming, concept-art placeholders) — design/browse without Electron
+- [x] **Design pass** — stage floor glow, glass status card, panel gradient headers, character cards, animated pipeline dots, custom scrollbars (spec §2.4)
+- [x] App version 0.3.0 (sidebar + package.json)
+
+**Asset pipeline decision (§32.1, user-driven):** user supplies final `.glb/.gltf` models; app loads them generically and animates automatically (clip mapping + lip-sync + motion overlay). MakeHuman→Mixamo generation is dropped from the roadmap.
+
+---
+
 ## Phase 1 — Foundation & Scaffolding
 
 ### 1.1 Project Setup
 - [x] Git repo for app source, `.gitignore` correct
 - [x] `package.json` — Electron + **Babylon.js** + TypeScript, electron-vite
-- [x] ESLint/Prettier config — *pending* (add in next pass)
+- [x] Prettier config + `format`/`format:check` scripts
+- [ ] ESLint — **blocked**: `typescript-eslint@8` peer `typescript >=4.8.4 <6.1.0` conflicts with TS 7.0.2; add when typescript-eslint supports TS7
 - [x] Electron app boots to dark `#0A0A12` shell (§2.4)
 - [x] Config file at `%APPDATA%\LUNA\config.json` — AI root configurable
 - [x] First-run auto-create of workspace folders (§3)
@@ -73,8 +110,10 @@ Shipped and verified (app launches; Babylon WebGL2 renderer runs):
 - [x] Ollama model detection via manifests; Piper via `*.onnx.json`; whisper dirs; wake-word ONNX
 - [x] 3D asset detection (`*.glb/gltf/fbx/vrm`), reference art listed separately
 - [x] Settings → asset manager UI (list detected assets per category)
-- [ ] Manual "re-scan" button + auto-rescan on path change
-- [ ] Assign model/character/voice to LUNA or Shoya from the asset manager
+- [x] Manual **Re-scan** button (Settings)
+- [ ] Auto-rescan on AI-root path change (path-change UI pending)
+- [x] Assign active **LLM + TTS voice** to LUNA or Shoya from the asset manager (chat uses LUNA's assigned model)
+- [x] Assign 3D character model to LUNA or Shoya from the asset manager (Settings; hot-reloads dashboard rig) — v0.3.0
 
 ---
 
@@ -82,10 +121,10 @@ Shipped and verified (app launches; Babylon WebGL2 renderer runs):
 
 ### 2.1 Local LLM Engine (§32.2 — Ollama REST API)
 - [x] LLM client module: `ollamaHealth`, `listOllamaModels`, `ollamaChat` (stream: false)
-- [x] Task→model routing stub (chat uses qwen2.5:7b → qwen2.5 → first model)
+- [x] **Streaming responses** (`ollamaChatStream`, SSE) into chat UI with live token updates
+- [x] Task→model routing stub (chat uses LUNA-assigned model → qwen2.5:7b → qwen2.5 → first model)
 - [x] Auto-fallback chain + graceful offline message
 - [ ] Install Ollama for Windows with `OLLAMA_MODELS=D:\own-ai\models\ollama` (verify blobs picked up without re-pull)
-- [ ] Streaming responses (SSE) into chat UI
 - [ ] Model load/unload on demand (§31)
 - [ ] Task router expansion: coding (qwen2.5 larger), vision (qwen2.5vl), embed (nomic-embed-text)
 
@@ -104,29 +143,32 @@ Shipped and verified (app launches; Babylon WebGL2 renderer runs):
 - [ ] **Explicit AI switching** (§27.1) + personality prompts (§28)
 
 ### 2.4 Memory System (§6)
-- [ ] Short/session/long-term/project memory + local embeddings (`nomic-embed-text`)
-- [ ] "Continue the project we worked on yesterday" recall
-- [ ] Memory manager UI (view/search/edit/delete/export/clear/disable)
-- [ ] One-week temp-session expiration (§7)
+- [x] **Memory store (v0.2.0)** — short / session / long-term / project tiers, persisted at `<aiRoot>\memory\luna-memory.json`
+- [x] **7-day session expiration (§7)** — auto-pruned on startup + manual "Prune expired"
+- [x] **Sessions (v0.2.0)** — conversation history in `<aiRoot>\memory\luna-sessions.json`, restore on start, multi-turn model context, Save/Unsave/Remove (chat turns live in sessions, not the short tier)
+- [x] **Pin/unpin** memories (pinned = never expires) — v0.2.0
+- [x] **Keyword recall** into chat context ("continue the project we worked on yesterday" — keyword-based; embeddings upgrade pending)
+- [ ] Embeddings recall via `nomic-embed-text` (vector search — needs Ollama online) + "project resume" inference
+- [x] Memory manager UI: view / search / delete / export / clear sessions / clear all / pin (edit + disable pending)
 
 ---
 
 ## Phase 3 — 3D Characters & Rendering (§2, §32.1, §32.4)
 
-### 3.0 Character Asset Generation (Shoya-driven, dev-time only, free)
-- [ ] Set up **MakeHuman** (free, open-source) Python API generation, configured against `reference\img1_nishimiya.png` + `img3_nishimiya_full.png` (LUNA) and `img2_shoya.png` + `img4_shoya_full.png` (Shoya): hairstyle/color, outfit silhouette, proportions (original design, not a copyrighted likeness)
-- [ ] **Mixamo** auto-rig + free animation pass for the §2.2 state/gesture set
-- [ ] Export → `D:\own-ai\models\` and `D:\own-ai\animations\` (`*.glb`/FBX + retargeted clips)
-- [ ] **Remove all generation tooling** after export — not shipped, not a runtime dependency (§32.1)
-- [ ] Backup option: **Ready Player Me** free tier (GLB/VRM) if MakeHuman/Mixamo hits blockers
+### 3.0 Character Asset Generation
+**Approach (v0.3.0): user supplies final `.glb`/`.gltf` models** — dropped into `D:\own-ai\characters\`, assigned in Settings. App animates them automatically: clip→state mapping, lip-sync (jaw bone or ARKit visemes), motion overlay. No generation tooling needed.
+- [x] Generic loader (SceneLoader) + auto-fit + clip mapping + lip-sync — v0.3.0
+- [ ] **User model delivery** — awaiting `.glb`/`.gltf` for LUNA and Shoya (stylized to match `reference\img1–4`)
+- [ ] Clip set per character: idle, listening, thinking, speaking, working (+ optional happy/confused/etc. when provided)
 
 ### 3.1 Character Pipeline
 - [x] **Babylon.js** renderer in Electron (WebGL2, GPU) — §32.4
 - [x] **Placeholder fallback rig** (primitive humanoid + blendshape-jaw + arm IK pivots) — §32.1
-- [ ] Load generated `.glb`/`.vrm` models when present; auto-fallback to placeholder (§32.1)
-- [ ] Same rig shared by floating-window (half-body) and dashboard (full-body) — done for placeholder
+- [x] **Generic model loader** — load assigned `.glb`/`.gltf` from Settings; auto-fallback to placeholder — v0.3.0
+- [x] Same rig shared by floating-window (half-body) and dashboard (full-body); float loads assigned model
 - [ ] Arm/hand IK for dynamic pointing at screen coords (§2.2 Pointing)
 - [ ] Facial blendshapes layered independently over body animation
+- [ ] FBX/VRM import support if user provides those formats
 
 ### 3.2 Animation States
 - [x] Procedural states: Idle, Listening, Thinking, Speaking, Working (placeholder)
@@ -235,5 +277,5 @@ Shipped and verified (app launches; Babylon WebGL2 renderer runs):
 ## Open Questions / Decisions Needed
 
 - [ ] **Ollama install**: OK to install Ollama for Windows on this machine (`OLLAMA_MODELS=D:\own-ai\models\ollama`)? Needed to bring the app online locally.
-- [ ] **MakeHuman install**: OK to install MakeHuman (free) as a dev-time dependency for the §32.1 generation pass? (Removed from the project afterwards.)
+- [ ] **User 3D models**: provide final LUNA/Shoya `.glb`/`.gltf` files (stylized per `reference\img1–4`) — drop into `D:\own-ai\characters\`, then assign in Settings.
 - [ ] Confirm the reference-image rename to spec names is acceptable (`img1_nishimiya.png`, `img2_shoya.png`, `img3_nishimiya_full.png`, `img4_shoya_full.png`).

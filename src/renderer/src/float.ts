@@ -7,6 +7,10 @@ const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) 
 const character = createCharacterScene($<HTMLCanvasElement>('float-canvas'), 'half')
 character.setRingColor(new Color3(0.55, 0.35, 0.95), new Color3(0.7, 0.5, 1))
 
+void window.luna.config.get().then((cfg) => {
+  if (cfg.character.luna.idle) void character.loadModel(cfg.character.luna.idle)
+})
+
 let pinned = true
 
 window.luna.onState((s: AppState) => {

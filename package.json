@@ -1,6 +1,6 @@
 {
   "name": "luna-ai",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "LUNA - Advanced Windows AI Companion (Electron + Babylon.js)",
   "main": "out/main/index.js",
   "private": true,
@@ -13,6 +13,10 @@
     "start": "electron-vite preview",
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "design": "vite -c vite.design.config.ts",
+    "design:build": "vite build -c vite.design.config.ts",
+    "format": "prettier --write \"src/**/*.{ts,tsx,html,css}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,html,css}\"",
     "package": "electron-vite build && electron-builder --win",
     "release": "electron-vite build && electron-builder --win --publish never"
   },
@@ -21,6 +25,7 @@
     "electron": "^43.4.0",
     "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
+    "prettier": "^3.9.6",
     "typescript": "^7.0.2",
     "vite": "^7.3.6"
   },

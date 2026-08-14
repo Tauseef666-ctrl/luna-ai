@@ -39,6 +39,34 @@ export interface OllamaModel {
   modifiedAt: string
 }
 
+export type MemoryTier = 'short' | 'session' | 'long' | 'project'
+
+export interface MemoryEntry {
+  id: string
+  tier: MemoryTier
+  text: string
+  project?: string
+  tags: string[]
+  saved: boolean
+  createdAt: number
+  expiresAt?: number
+}
+
+export interface ChatTurn {
+  role: 'user' | 'assistant'
+  content: string
+  ts: number
+}
+
+export interface LunaSession {
+  id: string
+  name: string
+  saved: boolean
+  createdAt: number
+  updatedAt: number
+  turns: ChatTurn[]
+}
+
 export type CharState = 'idle' | 'listening' | 'thinking' | 'speaking' | 'working'
 
 export type AiStatus = 'online' | 'offline' | 'unknown'

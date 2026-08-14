@@ -15,6 +15,7 @@
         <div class="brand">LUNA</div>
         <nav id="nav">
           <button class="nav-item active" data-view="dashboard"><span class="glyph">◉</span>Dashboard</button>
+          <button class="nav-item" data-view="character"><span class="glyph">◑</span>Character</button>
           <button class="nav-item" data-view="chat"><span class="glyph">✉</span>Chat</button>
           <button class="nav-item" data-view="projects"><span class="glyph">▤</span>Projects</button>
           <button class="nav-item" data-view="ai"><span class="glyph">⬢</span>AI Models</button>
@@ -24,7 +25,7 @@
           <button class="nav-item" data-view="automation"><span class="glyph">⚙</span>Automation</button>
           <button class="nav-item" data-view="settings"><span class="glyph">⚙</span>Settings</button>
         </nav>
-        <div class="sidebar-foot">v0.1.0 · first build</div>
+        <div class="sidebar-foot">v0.3.0 · build</div>
       </aside>
 
       <main class="content">
@@ -52,8 +53,24 @@
           </div>
         </section>
 
+        <section id="view-character" class="view">
+          <div class="panel">
+            <h2>CHARACTER</h2>
+            <p class="sub">
+              LUNA &amp; Shoya — concept art, current model and animation pipeline (spec 2, 32.1). Add your
+              own .glb / .gltf / .fbx / .vrm to <code>characters/</code> and assign it in Settings.
+            </p>
+            <div id="char-cards" class="char-cards"></div>
+            <div id="char-pipeline"></div>
+          </div>
+        </section>
+
         <section id="view-chat" class="view">
           <div class="chat-wrap">
+            <div class="chat-head">
+              <span id="session-name" class="session-name">Chat ...</span>
+              <button id="btn-new-chat" class="icon-btn">New chat</button>
+            </div>
             <div id="chat-log" class="chat-log"></div>
             <form id="chat-form" class="chat-form">
               <input id="chat-input" placeholder="Message LUNA... (Enter to send)" autocomplete="off" />
@@ -66,7 +83,9 @@
           <div class="panel">
             <h2>PROJECTS</h2>
             <p class="sub">Workspace projects detected at <span id="projects-root"></span></p>
-            <div id="projects-list" class="empty-state">No projects yet. Create a folder inside the workspace `projects/`.</div>
+            <div id="projects-list" class="empty-state">
+              No projects yet. Create a folder inside the workspace `projects/`.
+            </div>
           </div>
         </section>
 
@@ -81,8 +100,35 @@
         <section id="view-memory" class="view">
           <div class="panel">
             <h2>MEMORY</h2>
-            <p class="sub">Short-term, session, long-term and project memory (spec 6)</p>
-            <div class="empty-state">Memory engine lands in the next build milestone (M3).</div>
+            <p class="sub">Short-term, session (7-day expiry), long-term and project memory (spec 6–7)</p>
+            <div class="mem-toolbar">
+              <input id="mem-search" placeholder="Search memories..." autocomplete="off" />
+              <button id="mem-clear-session" class="icon-btn">Clear sessions</button>
+              <button id="mem-clear-all" class="icon-btn">Clear all</button>
+              <button id="mem-prune" class="icon-btn">Prune expired</button>
+              <button id="mem-export" class="icon-btn">Export</button>
+            </div>
+            <div class="mem-add">
+              <select id="mem-tier">
+                <option value="long">Long-term</option>
+                <option value="project">Project</option>
+                <option value="session">Session (7 days)</option>
+                <option value="short">Short-term (this chat)</option>
+              </select>
+              <input id="mem-project" placeholder="Project (project memory)" autocomplete="off" />
+              <input
+                id="mem-text"
+                placeholder="What should LUNA remember?... (Enter saves)"
+                autocomplete="off"
+              />
+              <button id="mem-add-btn">Remember</button>
+            </div>
+            <h3 class="sub">
+              Sessions (Save = keep forever · Unsave = back to 7-day temp · Remove = delete)
+            </h3>
+            <div id="session-list" class="empty-state">Loading sessions...</div>
+            <h3 class="sub">Memories</h3>
+            <div id="mem-list" class="empty-state">Loading memories...</div>
           </div>
         </section>
 
@@ -115,6 +161,8 @@
             <h2>SETTINGS</h2>
             <p class="sub">Asset manager — everything auto-detected in the workspace (spec 3)</p>
             <div id="asset-root"></div>
+            <div id="assignment" class="asset-section"></div>
+            <button id="btn-rescan" class="icon-btn">Re-scan workspace</button>
             <div id="asset-llm" class="asset-section"></div>
             <div id="asset-stt" class="asset-section"></div>
             <div id="asset-tts" class="asset-section"></div>

@@ -4,7 +4,11 @@ import type { Asset, ScanResult } from '../shared/types'
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'memory', 'config', 'projects'])
 
-function walk(dir: string, depth: number, cb: (p: string, isDir: boolean, st: ReturnType<typeof statSync>) => void): void {
+function walk(
+  dir: string,
+  depth: number,
+  cb: (p: string, isDir: boolean, st: ReturnType<typeof statSync>) => void
+): void {
   if (depth > 8) return
   let entries: string[]
   try {
