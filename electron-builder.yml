@@ -11,7 +11,9 @@ asar: true
 win:
   target:
     - nsis
+    - portable
   executableName: LUNA
+  icon: resources/icon.png
 nsis:
   oneClick: false
   perMachine: false
@@ -20,4 +22,6 @@ nsis:
   createStartMenuShortcut: true
   shortcutName: LUNA
 artifactName: ${productName}-Setup-${version}.${ext}
+portable:
+  artifactName: ${productName}-Portable-${version}.${ext}
 publish: null

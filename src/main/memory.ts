@@ -63,12 +63,20 @@ class MemoryStore {
       expiresAt: input.tier === 'session' && !saved ? now + SESSION_TTL_MS : undefined
     }
     if (entry.tier === 'short') {
-      this.entries = this.entries.filter((e) => e.tier !== 'short')
+      const shorts = this.entries.filter((e) => e.tier === 'short')
+      if (shorts.length >= SHORT_MAX) {
+        const excess = shorts.length - SHORT_MAX + 1
+        const dropIds = new Set(
+          shorts
+            .slice()
+            .sort((a, b) => a.createdAt - b.createdAt)
+            .slice(0, excess)
+            .map((e) => e.id)
+        )
+        this.entries = this.entries.filter((e) => !dropIds.has(e.id))
+      }
     }
     this.entries.push(entry)
-    if (entry.tier === 'short' && this.entries.filter((e) => e.tier === 'short').length > SHORT_MAX) {
-      this.entries = this.entries.filter((e, i, a) => e.tier !== 'short' || i >= a.length - SHORT_MAX)
-    }
     this.persist()
     return entry
   }
@@ -104,6 +112,16 @@ class MemoryStore {
     const hits = this.search(query, limit)
     if (hits.length === 0) return ''
     return hits.map((e) => `[${e.tier}${e.project ? `:${e.project}` : ''}] ${e.text}`).join('\n')
+  }
+
+  projectContext(project: string, limit = 8): string {
+    if (!project) return ''
+    const hits = this.entries
+      .filter((e) => e.project === project)
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, limit)
+    if (hits.length === 0) return ''
+    return hits.map((e) => `- ${e.text}`).join('\n')
   }
 
   delete(id: string): boolean {

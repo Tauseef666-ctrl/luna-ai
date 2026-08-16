@@ -1,33 +1,34 @@
 # LUNA — Advanced Windows AI Companion
 
-LUNA is a Windows desktop AI companion built as a real application: offline-first local AI, an online coding companion (**Shoya**), 3D animated characters, voice interaction, memory, Windows control, project management, research and a futuristic glassy dashboard.
+LUNA is a Windows desktop AI companion built as a real application: offline-first local AI, an online coding companion (**Shoya**), animated 2D characters, voice interaction, memory, Windows control, project management, research and a futuristic glassy dashboard.
 
-Full requirements live in [`LUNA_spec.md`](LUNA_spec.md). The build roadmap and progress tracker is [`plan.md`](plan.md).
+Full requirements live in [`luna-spec.md`](luna-spec.md). The build roadmap and progress tracker is [`plan.md`](plan.md).
 
 ## Stack
 
 - **Electron** — native Windows desktop shell (tray, notifications, credential access)
-- **Babylon.js** — 3D character rendering (placeholder rig for now, spec §32.1)
+- **2D animated characters** — CSS/HTML motion rig over the character concept art (spec §32.1, §32.4)
 - **TypeScript** + electron-vite
 - **Ollama** — local LLM inference via its REST API (`http://localhost:11434`, spec §32.2)
 - **faster-whisper / Piper / wake-word** ONNX models — voice pipeline (spec §32.3)
 - **electron-builder + GitHub Actions** — Windows installer release pipeline
 
-## Status (v0.1.0 — first build)
+## Status (v0.4.0 — 2D characters + memory + streaming)
 
-Shipped in this first version:
+Shipped:
 
-- [x] Fresh Electron + Babylon.js + TypeScript scaffold (old Tauri/Python build fully removed)
+- [x] Electron + TypeScript scaffold (old Tauri/Python build fully removed)
 - [x] Dark glassy dashboard shell with the design system palette from spec §2.4
-- [x] Placeholder 3D character rig (idle / listening / thinking / speaking / working states, breathing + lip-jaw sync, status ring) — spec §32.1 fallback
-- [x] Floating half-body window (always-on-top, pin/close, status + subtitle bar)
-- [x] Asset scanner: auto-detects Ollama models, Whisper STT, Piper voices, wake-word models, 3D characters, animations, reference art and projects under the workspace
-- [x] Ollama client (health check, model list, chat) with graceful offline fallback
-- [x] Config store at `%APPDATA%\LUNA\config.json` (AI root defaults to `D:\own-ai\`, configurable)
+- [x] **Animated 2D characters**: LUNA (`img1_nishimiya.png`) + Shoya (`img2_shoya.png`) side-by-side on the dashboard, draggable in the floating window, live preview with state test buttons — idle / listening / thinking / speaking / working motion states
+- [x] Floating window (always-on-top, pin/close, status + subtitle bar, drag characters)
+- [x] Asset scanner: auto-detects Ollama models, Whisper STT, Piper voices, wake-word models, reference art and projects under the workspace
+- [x] Ollama client (health check, model list, streaming chat) with graceful offline fallback
+- [x] Memory engine (short/session/long/project tiers), sessions with Save/Unsave/Remove, pin/unpin, export
+- [x] Project manager (create/rename/delete, active-project context) + activity log
+- [x] Config store at `%APPDATA%\LUNA\config.json` (AI root defaults to `D:\own-ai\`, configurable) + chat behavior settings (temperature, max tokens, system prompt)
 - [x] System tray + window management
-- [ ] 3D characters generated from `reference/` (MakeHuman → Mixamo pipeline, spec §32.1)
-- [ ] Voice pipeline (Whisper STT, Piper TTS, lip-sync, push-to-talk)
-- [ ] Memory, coding agent, VS Code/Windows control, Shoya integration, research/news
+- [ ] Voice pipeline (Whisper STT, Piper TTS, lip-sync equalizer, push-to-talk)
+- [ ] Coding agent, VS Code/Windows control, Shoya integration, research/news
 
 ## Getting started (dev)
 
@@ -61,8 +62,8 @@ Without Ollama running, the app still works and shows `LUNA • OFFLINE`.
 ```
 D:\own-ai\
 ├── models\        Ollama blobs/manifests, whisper, piper, wakeword   (not in git)
-├── characters\    generated 3D models                                (not in git)
-├── animations\    animation clips                                     (not in git)
+├── characters\    optional 2D sprite sheets / character assets        (not in git)
+├── animations\    animation assets (optional sprite strips)            (not in git)
 ├── voices\        custom voice assets                                 (not in git)
 ├── projects\      user projects                                       (not in git)
 ├── memory\        memory database                                     (not in git)
@@ -72,7 +73,7 @@ D:\own-ai\
 └── out\           build output (gitignored)
 ```
 
-Model weights, character files, reference images and the local workspace are **never committed** (spec §30.1).
+Model weights, character assets, reference images and the local workspace are **never committed** (spec §30.1).
 
 ## Release pipeline
 

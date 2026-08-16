@@ -1,12 +1,23 @@
 import type { LunaBridge } from '../../preload'
 import type {
+  ActivityEvent,
+  AiSwitchPayload,
   AppState,
+  CharacterStatePayload,
+  CodingContext,
+  DigestPayload,
+  LipsyncPayload,
   LunaConfig,
   LunaSession,
   MemoryEntry,
   MemoryTier,
   OllamaModel,
-  ScanResult
+  PermissionRequest,
+  PermissionResolved,
+  PointPayload,
+  ProjectInfo,
+  ScanResult,
+  SubtitlePayload
 } from '../../shared/types'
 
 const MS = 1000
@@ -27,12 +38,83 @@ const SAMPLE_CONFIG: LunaConfig = {
   theme: 'dark',
   wakeWordEnabled: false,
   pushToTalk: true,
+  activeProject: '',
+  activeAi: 'luna',
   character: {
     luna: { model: 'qwen2.5:7b', idle: '', speaking: 'en_US-amy' },
     shoya: { model: 'qwen2.5:3b', idle: '', speaking: 'en_US-ryan' }
   },
-  providers: {}
+  chat: {
+    temperature: 0.7,
+    maxTokens: 2048,
+    systemPrompt:
+      'You are LUNA, a warm, gentle, intelligent, patient AI companion living on this PC. You are helpful, honest about your limits, and never pretend a failed action succeeded. Reply concisely and naturally, as if speaking to a friend.'
+  },
+  tts: { enabled: true, autoSpeak: true, lengthScale: 1 },
+  voice: { language: 'en', micDevice: '', mode: 'ptt', sensitivity: 0.5 },
+  float: { width: 360, height: 520, clickThrough: false, opacity: 1 },
+  automation: { confirm: true, proactive: false },
+  memory: { sessionDays: 7, autoSave: false, askBeforeDelete: true },
+  voiceId: { enabled: false, guest: false },
+  background: {
+    startWithWindows: false,
+    startMinimized: false,
+    hotkey: 'CommandOrControl+Shift+Space'
+  },
+  providers: {
+    ollama: {
+      id: 'ollama',
+      kind: 'ollama',
+      label: 'Ollama (Local)',
+      baseUrl: 'http://localhost:11434',
+      model: '',
+      apiKeyRef: '',
+      enabled: true,
+      priority: 0
+    }
+  }
 }
+
+const SAMPLE_PROJECTS: ProjectInfo[] = [
+  {
+    name: 'luna-ai',
+    path: 'D:\\own-ai\\projects\\luna-ai',
+    createdAt: now - 30 * 86400 * MS,
+    updatedAt: now - 3600 * MS
+  },
+  {
+    name: 'website-redesign',
+    path: 'D:\\own-ai\\projects\\website-redesign',
+    createdAt: now - 20 * 86400 * MS,
+    updatedAt: now - 2 * 86400 * MS
+  },
+  {
+    name: 'python-tools',
+    path: 'D:\\own-ai\\projects\\python-tools',
+    createdAt: now - 10 * 86400 * MS,
+    updatedAt: now - 5 * 86400 * MS
+  }
+]
+
+const SAMPLE_ACTIVITY: ActivityEvent[] = [
+  {
+    id: 'a1',
+    ts: now - 30 * MS,
+    level: 'info',
+    source: 'chat',
+    message: 'Message to qwen2.5:7b (session 1f2e3d4c)'
+  },
+  { id: 'a2', ts: now - 90 * MS, level: 'success', source: 'memory', message: 'Remembered (long)' },
+  {
+    id: 'a3',
+    ts: now - 300 * MS,
+    level: 'warn',
+    source: 'projects',
+    message: 'Failed to rename project "x"'
+  },
+  { id: 'a4', ts: now - 600 * MS, level: 'info', source: 'scan', message: 'Workspace re-scanned' },
+  { id: 'a5', ts: now - 900 * MS, level: 'info', source: 'app', message: 'LUNA started' }
+]
 
 const SAMPLE_MODELS: OllamaModel[] = [
   { name: 'qwen2.5:7b', size: 6.7e9, modifiedAt: new Date(now - 2 * 86400 * MS).toISOString() },
@@ -296,6 +378,15 @@ let memEntries = [...SAMPLE_MEMORY]
 let sessionList = [...SAMPLE_SESSIONS]
 let tokenListeners: Array<(chunk: string) => void> = []
 let stateListeners: Array<(s: AppState) => void> = []
+let charStateListeners: Array<(p: CharacterStatePayload) => void> = []
+let lipsyncListeners: Array<(p: LipsyncPayload) => void> = []
+let pointListeners: Array<(p: PointPayload) => void> = []
+let subtitleListeners: Array<(p: SubtitlePayload) => void> = []
+let aiSwitchListeners: Array<(p: AiSwitchPayload) => void> = []
+let permissionListeners: Array<(p: PermissionRequest) => void> = []
+let permissionResolvedListeners: Array<(p: PermissionResolved) => void> = []
+let digestListeners: Array<(p: DigestPayload) => void> = []
+let voiceHeardListeners: Array<(p: { text: string; language: string }) => void> = []
 
 function pushTokens(text: string): void {
   const step = Math.max(2, Math.floor(text.length / 40))
@@ -323,9 +414,28 @@ function svgImage(label: string): string {
 export const mockBridge: LunaBridge = {
   config: {
     get: () => Promise.resolve({ ...SAMPLE_CONFIG }),
-    set: () => Promise.resolve()
+    set: (cfg) => {
+      Object.assign(SAMPLE_CONFIG, cfg)
+      return Promise.resolve()
+    }
   },
   scan: () => Promise.resolve(SAMPLE_SCAN),
+  projects: {
+    list: () => Promise.resolve(SAMPLE_PROJECTS),
+    create: (name) =>
+      Promise.resolve({
+        name,
+        path: `D:\\own-ai\\projects\\${name}`,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      }),
+    rename: () => Promise.resolve(true),
+    delete: () => Promise.resolve(true)
+  },
+  activity: {
+    list: (limit) => Promise.resolve(SAMPLE_ACTIVITY.slice(0, limit ?? 100)),
+    clear: () => Promise.resolve(SAMPLE_ACTIVITY.length)
+  },
   assets: {
     image: (path) => Promise.resolve(svgImage(path.split(/[\\/]/).pop() ?? 'concept art')),
     binary: () => Promise.resolve(null)
@@ -334,11 +444,104 @@ export const mockBridge: LunaBridge = {
     health: () => Promise.resolve({ ok: true, url: SAMPLE_CONFIG.ollamaUrl }),
     models: () => Promise.resolve(SAMPLE_MODELS)
   },
+  providers: {
+    test: () => Promise.resolve({ ok: true, latencyMs: 24, detail: 'Mock provider reachable', models: SAMPLE_MODELS.map((m) => m.name) }),
+    status: () =>
+      Promise.resolve([
+        {
+          id: 'ollama',
+          kind: 'ollama',
+          label: 'Ollama (Local)',
+          model: '',
+          enabled: true,
+          ok: true,
+          latencyMs: 24,
+          detail: 'Ollama reachable',
+          models: SAMPLE_MODELS.map((m) => m.name)
+        }
+      ]),
+    chat: (id, text) =>
+      Promise.resolve(
+        `[${id} mock] I heard: ${text}. In the real build this routes to your configured provider.`
+      )
+  },
+  secret: {
+    set: () => Promise.resolve(true),
+    has: () => Promise.resolve(false),
+    delete: () => Promise.resolve(true)
+  },
+  shoya: {
+    detect: () =>
+      Promise.resolve({ found: true, command: 'opencode', version: '1.18.18', source: 'path' }),
+    run: (prompt) =>
+      Promise.resolve({
+        ok: true,
+        backend: 'opencode',
+        providerId: 'opencode-cli',
+        output: `[Shoya mock] OpenCode CLI response for: "${prompt.slice(0, 80)}". In the real build this runs opencode run with your exact prompt.`,
+        durationMs: 1240,
+        truncated: false
+      }),
+    launch: () => Promise.resolve(true)
+  },
+  router: {
+    route: (text) =>
+      Promise.resolve({
+        target: 'chat',
+        ok: true,
+        output: `[Router mock] "${text.slice(0, 60)}" would be classified and sent to the best target (LUNA local, LUNA online, Shoya, Windows, VS Code, Memory or Research).`,
+        providerId: 'router'
+      })
+  },
+  context: {
+    gather: () =>
+      Promise.resolve({
+        project: 'luna-ai',
+        path: 'D:\\own-ai',
+        exists: true,
+        git: { isRepo: true, branch: 'main', changes: [{ status: 'M', file: 'src/main/index.ts' }] },
+        tree: ['src/main/index.ts', 'src/main/config.ts', 'src/shared/types.ts', 'package.json', 'README.md'],
+        summary: { sourceFiles: 24, totalLines: 3412, latestChanged: ['src/main/index.ts', 'src/main/router.ts'] }
+      } as CodingContext),
+    block: () => Promise.resolve('Project: luna-ai\nPath: D:\\own-ai\nGit: repo on branch "main" with 1 changed file')
+  },
+  vscode: {
+    status: () => Promise.resolve({ installed: true, command: 'code', version: '1.100.0' }),
+    open: () => Promise.resolve(true),
+    openFile: () => Promise.resolve(true),
+    openTerminal: () => Promise.resolve(true)
+  },
+  research: {
+    run: (query) =>
+      Promise.resolve({
+        ok: true,
+        online: true,
+        offline: false,
+        query,
+        sources: [
+          { title: 'Mock result 1', url: 'https://example.com/1', snippet: 'First mock snippet about the query.' },
+          { title: 'Mock result 2', url: 'https://example.com/2', snippet: 'Second mock snippet with more detail.' }
+        ],
+        summary: 'Mock research summary for your query.'
+      }),
+    news: () =>
+      Promise.resolve({
+        ok: true,
+        online: true,
+        items: [
+          { topic: 'India', title: 'Mock headline one', url: 'https://example.com/n1', summary: 'Mock news summary one.' },
+          { topic: 'Technology', title: 'Mock headline two', url: 'https://example.com/n2', summary: 'Mock news summary two.' }
+        ]
+      })
+  },
   float: {
     toggle: () => Promise.resolve(true),
     open: () => Promise.resolve(true),
     close: () => Promise.resolve(true),
-    setAlwaysOnTop: () => Promise.resolve(true)
+    setAlwaysOnTop: () => Promise.resolve(true),
+    clickThrough: () => Promise.resolve(true),
+    reposition: () => Promise.resolve(true),
+    resize: () => Promise.resolve(true)
   },
   sendChat: (text) =>
     new Promise<string>((resolve) => {
@@ -354,6 +557,35 @@ export const mockBridge: LunaBridge = {
   onState: (cb) => {
     stateListeners.push(cb)
     setTimeout(() => cb(SAMPLE_STATE), 50)
+  },
+  tts: {
+    status: () =>
+      Promise.resolve({
+        available: true,
+        engine: 'piper',
+        voice: 'en_US-amy-medium',
+        sampleRate: 22050,
+        settings: { ...SAMPLE_CONFIG.tts }
+      }),
+    speak: (text) => {
+      if (text && 'speechSynthesis' in window) {
+        const u = new SpeechSynthesisUtterance(text)
+        window.speechSynthesis.cancel()
+        window.speechSynthesis.speak(u)
+      }
+      return Promise.resolve()
+    },
+    stop: () => {
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel()
+      return Promise.resolve(true)
+    },
+    done: () => Promise.resolve(true),
+    level: () => {},
+    onStarted: () => {},
+    onAudio: () => {},
+    onEnded: () => {},
+    onError: () => {},
+    onLevel: () => {}
   },
   sessions: {
     list: () => Promise.resolve(sessionList),
@@ -434,5 +666,50 @@ export const mockBridge: LunaBridge = {
     },
     export: () => Promise.resolve(JSON.stringify(memEntries, null, 2)),
     prune: () => Promise.resolve(0)
-  }
+  },
+  onCharacterState: (cb) => {
+    charStateListeners.push(cb)
+  },
+  onLipsync: (cb) => {
+    lipsyncListeners.push(cb)
+  },
+  onPoint: (cb) => {
+    pointListeners.push(cb)
+  },
+  onSubtitle: (cb) => {
+    subtitleListeners.push(cb)
+  },
+  onAiSwitched: (cb) => {
+    aiSwitchListeners.push(cb)
+  },
+  onPermissionRequest: (cb) => {
+    permissionListeners.push(cb)
+  },
+  onPermissionResolved: (cb) => {
+    permissionResolvedListeners.push(cb)
+  },
+  onDigest: (cb) => {
+    digestListeners.push(cb)
+  },
+  voice: {
+    input: () => {},
+    audio: () => {}
+  },
+  hotkey: {
+    pressed: () => {}
+  },
+  permission: {
+    respond: (req, approved) => {
+      permissionResolvedListeners.forEach((cb) => cb({ action: req.action, approved }))
+    }
+  },
+  ai: {
+    switch: (active) => {
+      aiSwitchListeners.forEach((cb) => cb({ active }))
+    }
+  },
+  onVoiceHeard: (cb) => {
+    voiceHeardListeners.push(cb)
+  },
+  setCharacterState: () => {}
 }

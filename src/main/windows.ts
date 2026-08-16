@@ -1,5 +1,6 @@
 import { BrowserWindow } from 'electron'
 import { join } from 'node:path'
+import { loadConfig } from './config'
 
 function isDev(): boolean {
   return Boolean(process.env.ELECTRON_RENDERER_URL)
@@ -36,9 +37,10 @@ export function createDashboardWindow(): BrowserWindow {
 }
 
 export function createFloatWindow(): BrowserWindow {
+  const cfg = loadConfig()
   const win = new BrowserWindow({
-    width: 360,
-    height: 520,
+    width: cfg.float.width || 360,
+    height: cfg.float.height || 520,
     frame: false,
     transparent: true,
     resizable: true,
@@ -46,6 +48,7 @@ export function createFloatWindow(): BrowserWindow {
     skipTaskbar: true,
     hasShadow: false,
     title: 'LUNA Float',
+    opacity: cfg.float.opacity ?? 1,
     webPreferences: {
       preload: preloadPath(),
       contextIsolation: true,
@@ -55,6 +58,7 @@ export function createFloatWindow(): BrowserWindow {
   })
   win.setAlwaysOnTop(true, 'floating')
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  if (cfg.float.clickThrough) win.setIgnoreMouseEvents(true, { forward: true })
   if (isDev()) {
     win.loadURL(`${process.env.ELECTRON_RENDERER_URL}/float.html`)
   } else {

@@ -1,7 +1,7 @@
 {
   "name": "luna-ai",
-  "version": "0.3.0",
-  "description": "LUNA - Advanced Windows AI Companion (Electron + Babylon.js)",
+  "version": "0.4.0",
+  "description": "LUNA - Advanced Windows AI Companion (2D animated characters, offline-first)",
   "main": "out/main/index.js",
   "private": true,
   "author": {
@@ -28,11 +28,6 @@
     "prettier": "^3.9.6",
     "typescript": "^7.0.2",
     "vite": "^7.3.6"
-  },
-  "dependencies": {
-    "@babylonjs/core": "^9.21.1",
-    "@babylonjs/gui": "^9.21.1",
-    "@babylonjs/loaders": "^9.21.1"
   },
   "allowScripts": {
     "electron@43.4.0": true,

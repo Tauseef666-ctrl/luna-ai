@@ -1,0 +1,50 @@
+Plan — Agent A (Core: Systems, AI, Automation, Data)
+Update this file at the end of every work session. Keep entries short. This is a tracking log, not prose documentation — see AGENTS.md for the full task list and LUNA_spec_v2_2D.md for spec details.
+Last updated: 2026-08-16 (Agent A sprint 2)
+Status: In progress — Core foundation green; Ollama bring-online blocked on download (~85%)
+Task Checklist
+[x] 1. Electron app shell & background service (§10, §25) — background service done in this sprint: tray-resident keep-alive (window-all-closed no longer quits on win32), `background.startMinimized` honors start hidden, `background.startWithWindows` via app.setLoginItemSettings, push-to-talk global hotkey registered at boot (§10).
+[ ] 2. D:\own-ai\ asset scanning system (§3) — EXISTS (scanner.ts + assets.ts + Settings wiring). Verified reading assets; not re-scoped this sprint.
+[x] 3. AI Provider System (§4) — providers.ts (Ollama/Gemini/Claude/OpenAI-compat), DPAPI-encrypted credential store (.luna/secrets.bin via safeStorage), testConnection per provider, providerStatuses, enabledProviders, unified providerChat. IPC: providers:test/status/chat, secret:set/has/delete. Config DEFAULTS ships a default enabled Ollama provider (priority 0).
+[ ] 4. Offline-first switching logic (§5) — partially built in router (lunaReply prefers Ollama → falls back to online provider → clear offline message; no retry storms). Needs a dedicated health loop polish pass.
+[x] 5. Memory system (§6, §7) — EXISTS (memory.ts + sessions.ts + IPC), recall/projectContext/prune/export wired. Not re-scoped this sprint.
+[x] 6. AI Router / Orchestration Layer (§27, §32.8) — router.ts: classify() intent→target (shoya/luna/memory/windows/vscode/research/chat) with confidence + reason; route() dispatches to tools; IPC router:route. Partial-failure reporting via RouteResult.
+[x] 7. Shoya backend routing (§1, §16, §17) — shoya.ts: detectOpenCode (PATH/npm/known dirs), runShoya NOW PREFERS configured API providers (per-task model override) over OpenCode CLI (opencode run fallback), launchShoyaTerminal. IPC shoya:detect/run/launch. Real opencode run verified (v1.18.18).
+[x] 8. Windows Computer Control + permission tiers (§13) — EXISTS (control.ts: listWindows/focus/screenshot/launchApp/openUrl/runCommand + SAFE_COMMANDS + dialog confirm). Not re-scoped this sprint.
+[x] 9. Coding Agent context (§18) — coding-context.ts: git status/branch/porcelain, source-tree walk, line counts, contextBlock() for LUNA-offline-coding + Shoya. IPC context:gather/block.
+[x] 10. VS Code integration hooks (§15) — vscode.ts: vscodeStatus (auto-detect code.cmd), openInVSCode, openFileInVSCode, openTerminalInVSCode, vscodeContext. IPC vscode:status/open/openFile/openTerminal.
+[x] 11. Research Assistant + News Mode backend (§19, §20) — research.ts: online DDG search + source extraction, offline local-doc fallback (reference/ dir), LLM summarization (Ollama→provider), India-priority news topics with ToI fetch. IPC research:run/news.
+[ ] 12. Project Manager backend (§21) — EXISTS (projects.ts + IPC). Not re-scoped this sprint.
+[ ] 13. Security layer (§24) — partial: secrets via DPAPI safeStorage, no-credential-logging (secrets never hit config.json/activity). Needs sandboxing + permission-enforcement audit.
+[ ] 14. Extended capabilities backend (§32.1–§32.7) — not started (Agent B owning some UI-side; reminders/skills listed elsewhere). Core emitters still pending.
+[ ] 15. Build pipeline — electron-builder + GitHub Actions (§30) — EXISTS (package.json + electron-builder.yml); GitHub Actions workflow check pending.
+Currently Working On
+- Ollama bring-online: zip ~85% downloaded (1.39 GB v0.32.13, background curl + 20s monitor). Next: extract → OLLAMA_MODELS=D:\own-ai\models\ollama → serve → verify /api/tags.
+- After: security audit (§24), extended capabilities (§32.x), offline-first polish (§5).
+Blocked / Waiting On
+- Ollama download (background curl, connection resets at ~300MB intervals, resumable retries keep it going).
+- §32.x extended capabilities split with Agent B (UI stubs ready).
+Shared Contract Changes I've Proposed
+[2026-08-15] Agent B (Experience) added to the Shared Contract (now also in agents.md). Flagging so Agent A's Core emitters/drivers match:
+- New IPC Core → Experience: `permission:resolved` (re-broadcast of permission:response to all windows), `voice:heard` (echo of transcribed user voice).
+- New IPC Experience → Core: `character:set`, `ai:switch` → main now persists `activeAi` to config and re-broadcasts `ai:switched`.
+- New config fields (LunaConfig in src/shared/types.ts): `activeAi` ("luna"|"shoya"), `voice{ language, micDevice, mode("ptt"|"always"|"wake"), sensitivity }`, `float{ width, height, clickThrough, opacity }`, `automation{ confirm, proactive }`, `memory{ sessionDays, autoSave, askBeforeDelete }`, `voiceId{ enabled, guest }`, `background{ startWithWindows, startMinimized, hotkey }`. DEFAULTS updated in src/main/config.ts.
+- New IPC handlers already implemented by Agent B in main (src/main/index.ts): `float:clickThrough` (persists config), `float:reposition`, `float:resize`, `permission:response` → broadcast `permission:resolved` + activity log, `voice:input` → broadcast `voice:heard`, `hotkey:pressed`, `character:set` → broadcast `character:setState`, `ai:switch` → persist + broadcast `ai:switched`.
+- Preload bridge (src/preload/index.ts) exposes the full contract; Experience UI (dashboard + floating window) consumes it. Demos in the Character view simulate point/permission/digest/switch until Core emitters land.
+[2026-08-16] Agent A (Core) added to the Shared Contract — flagging for Agent B so UI can consume:
+- LunaConfig.providers is now typed `Record<string, ProviderConfig>` (was `Record<string, unknown>`); a default Ollama provider is shipped in DEFAULTS. ProviderConfig = { id, kind('ollama'|'gemini'|'claude'|'openai'), label, baseUrl?, model, apiKeyRef, enabled, priority }.
+- New IPC Core → Renderer: providers:test/status/chat, secret:set/has/delete (api keys stored encrypted, never in config.json), shoya:detect/run/launch, router:route, context:gather/block, vscode:status/open/openFile/openTerminal, research:run/news. All exposed on preload LunaBridge + mirrored in mock-bridge.
+- New shared types: ProviderStatus, ShoyaDetection, ShoyaRunResult, RouterTarget/RouteResult, CodingContext, VscodeStatus, ResearchSource/ResearchResult/NewsItem/NewsResult.
+Session Log
+(newest first — one entry per work session)
+[2026-08-16] Agent A sprint 2 (Core): Background service live (§10 — tray keep-alive, start-minimized, login-item, PTT global hotkey). AI Provider System complete (§4 — 4 provider kinds, DPAPI secret store, test connection, unified chat). Shoya routing complete (§1/16/17 — API-provider-first with per-task model override, OpenCode CLI fallback verified working). AI Router complete (§27 — intent→tool classifier + dispatcher). Coding-context (§18) + VS Code hooks (§15) + Research/News backend (§19/20) complete and IPC-wired. Typecheck + build green throughout. Ollama zip ~85% downloaded in background. No commits (user commits after final build).
+[2026-08-15] Agent B finished the Experience shared-contract layer: 15-state character rig (CSS interim), full floating window (transparent, waveform, pointing overlay, permission dialog, toasts, PTT + barge-in), dashboard AI status cards, settings tabs reading/writing config, enrollment UI stub, notification digest card, light/dark theme toggle, mock-bridge mirrors the full LunaBridge, typecheck + build green. Waiting on Core for: STT emitters, provider systems, digest aggregation, voiceprint matching, skills loader — UI stubs/demos provided.
+Notes / Decisions Made Along the Way
+- Shoya online strategy (2026-08-16): user decided Shoya uses configured API providers for online work, with different models per task type; OpenCode CLI stays as fallback only. runShoya() picks provider first, falls back to `opencode run`.
+- Ollama download resilience (2026-08-16): GitHub release connection resets every ~300MB; keep-alive strategy is resumable curl (-C -) with high --retry-all-errors; a 20s PowerShell monitor logs progress to Temp\opencode\ollama-progress.txt. Never run two concurrent writers (previous corrupt 1.7GB file was from double-write).
+- Default provider shipped in config so the app boots with a working local path even before any API keys are added.
+
+[2026-08-16] Agent A sprint 3 (Core - STT + deep debug):
+- STT pipeline implemented: src/main/stt.ts (whisper-cli transcription, ggml-base multilingual, hi/ur/en/hinglish->auto), models\whisper\bin\whisper-cli.exe + models\whisper\base\ggml-base.bin (147MB) downloaded. New IPC voice:audio { wavBase64, sampleRate, language } (16kHz mono WAV) -> transcribe -> broadcast voice:heard -> feed runChat (chat handler refactored to shared runChat(target,text)). Mic permission auto-granted via setPermissionRequestHandler('media'). Chat handler now: ipcMain.handle('chat') => runChat(event.sender, text).
+- Deep-debug pass (agent): fixed coding-context.ts tree/read path mismatch + latestChanged by mtime; config.ts deep-merge (nested defaults + default ollama provider preserved); control.ts Add-Type here-string parse fix (focusWindow was broken), launchApp error handler, openInVSCode shell drop + chained-command safety; projects.ts path-traversal guard (deleteProject('..') would have rmSync'd aiRoot!); shoya.ts .cmd routing (opencode detection was dead), pickProvider guard, --model auto fix; vscode.ts .cmd routing; router.ts isUrl reorder + ollama-fallback filter; research.ts snippet idx guard; memory.ts short-tier overwrite bug; tts-audio sampleRate guard. electron-builder.yml + .gitignore hardened (tools/, .luna/, *.ggml ignored). Typecheck green.
+- No commits (user commits after final build).

@@ -25,7 +25,7 @@
           <button class="nav-item" data-view="automation"><span class="glyph">⚙</span>Automation</button>
           <button class="nav-item" data-view="settings"><span class="glyph">⚙</span>Settings</button>
         </nav>
-        <div class="sidebar-foot">v0.3.0 · build</div>
+        <div class="sidebar-foot">v0.4.0 · build</div>
       </aside>
 
       <main class="content">
@@ -34,22 +34,56 @@
           <span id="shoya-badge" class="badge shoya"><span class="dot"></span>Shoya • OFFLINE</span>
           <span class="spacer"></span>
           <span id="model-label" class="model-label">model: —</span>
+          <button id="btn-ai-switch" class="icon-btn switch-btn" title="Switch active AI (spec 27.1)">
+            ⚡ LUNA
+          </button>
+          <button id="btn-theme" class="icon-btn" title="Toggle light/dark theme">◐</button>
           <button id="btn-float" class="icon-btn">Float</button>
         </header>
 
         <section id="view-dashboard" class="view active">
           <div class="stage">
-            <div class="stage-3d">
-              <canvas id="luna-canvas"></canvas>
-              <div class="status-card glass">
-                <div id="luna-ring" class="ring"></div>
-                <div>
-                  <h3>LUNA</h3>
-                  <p id="status-line">Ready to assist...</p>
+            <div class="char-duo">
+              <div class="char2d-slot luna">
+                <div id="dash-luna"></div>
+              </div>
+              <div class="char-divider">
+                <span>LUNA &amp; Shoya — animated 2D companions (spec 2, 32.1)</span>
+              </div>
+              <div class="char2d-slot shoya">
+                <div id="dash-shoya"></div>
+              </div>
+            </div>
+            <div class="ai-cards">
+              <div class="ai-card luna glass" id="ai-card-luna">
+                <div class="ai-card-head">
+                  <span class="ai-dot" id="luna-dot"></span>
+                  <h4>LUNA</h4>
+                  <span id="luna-flag" class="ai-flag">active</span>
+                </div>
+                <div class="ai-card-grid">
+                  <span>Status</span><b id="luna-status">offline</b> <span>Model</span
+                  ><b id="luna-model">—</b> <span>Memory</span><b id="luna-mem">—</b> <span>Voice</span
+                  ><b id="luna-voice">—</b> <span>Project</span><b id="luna-proj">—</b>
                 </div>
               </div>
-              <div class="placeholder-note glass">placeholder rig · spec 32.1</div>
+              <div class="ai-card shoya glass" id="ai-card-shoya">
+                <div class="ai-card-head">
+                  <span class="ai-dot" id="shoya-dot"></span>
+                  <h4>Shoya</h4>
+                  <span id="shoya-flag" class="ai-flag">—</span>
+                </div>
+                <div class="ai-card-grid">
+                  <span>Status</span><b id="shoya-status">offline</b> <span>Model</span
+                  ><b id="shoya-model">—</b> <span>Memory</span><b id="shoya-mem">—</b> <span>Voice</span
+                  ><b id="shoya-voice">—</b> <span>Project</span><b id="shoya-proj">—</b>
+                </div>
+              </div>
             </div>
+            <p id="status-line" class="stage-status">Ready to assist...</p>
+            <p class="ptt-hint stage-hint">
+              push-to-talk (spec 32.3) · switch AI with ⚡ · drag characters in the floating window
+            </p>
           </div>
         </section>
 
@@ -57,9 +91,38 @@
           <div class="panel">
             <h2>CHARACTER</h2>
             <p class="sub">
-              LUNA &amp; Shoya — concept art, current model and animation pipeline (spec 2, 32.1). Add your
-              own .glb / .gltf / .fbx / .vrm to <code>characters/</code> and assign it in Settings.
+              LUNA &amp; Shoya — animated 2D companions driven by their concept art (spec 2, 32.1). They move,
+              breathe and react to your chat states.
             </p>
+            <h3 class="sub">Live preview — use the buttons to see each animation state</h3>
+            <div class="demo-controls" id="demo-controls">
+              <button class="icon-btn" data-demo-state="idle">Idle</button>
+              <button class="icon-btn" data-demo-state="listening">Listening</button>
+              <button class="icon-btn" data-demo-state="thinking">Thinking</button>
+              <button class="icon-btn" data-demo-state="speaking">Speaking</button>
+              <button class="icon-btn" data-demo-state="working">Working</button>
+              <button class="icon-btn" data-demo-state="happy">Happy</button>
+              <button class="icon-btn" data-demo-state="confused">Confused</button>
+              <button class="icon-btn" data-demo-state="coding">Coding</button>
+              <button class="icon-btn" data-demo-state="searching">Searching</button>
+              <button class="icon-btn" data-demo-state="explaining">Explaining</button>
+              <button class="icon-btn" data-demo-state="pointing">Pointing</button>
+              <button class="icon-btn" data-demo-state="waiting">Waiting</button>
+              <button class="icon-btn" data-demo-state="error">Error</button>
+              <button class="icon-btn" data-demo-state="success">Success</button>
+              <button class="icon-btn" data-demo-state="goodbye">Goodbye</button>
+            </div>
+            <div class="char2d-demo">
+              <div id="demo-luna"></div>
+              <div id="demo-shoya"></div>
+            </div>
+            <h3 class="sub">Shared-contract demos — wire-up testers until Core emitters land</h3>
+            <div class="demo-controls" id="contract-demos">
+              <button class="icon-btn" id="demo-point">Simulate pointing</button>
+              <button class="icon-btn" id="demo-permission">Simulate permission request</button>
+              <button class="icon-btn" id="demo-digest">Simulate digest</button>
+              <button class="icon-btn" id="demo-switch">Switch AI (⚡)</button>
+            </div>
             <div id="char-cards" class="char-cards"></div>
             <div id="char-pipeline"></div>
           </div>
@@ -74,6 +137,7 @@
             <div id="chat-log" class="chat-log"></div>
             <form id="chat-form" class="chat-form">
               <input id="chat-input" placeholder="Message LUNA... (Enter to send)" autocomplete="off" />
+              <button type="button" id="btn-mic" class="icon-btn" title="Microphone — click to listen, click again to transcribe">Mic</button>
               <button type="submit">Send</button>
             </form>
           </div>
@@ -82,10 +146,21 @@
         <section id="view-projects" class="view">
           <div class="panel">
             <h2>PROJECTS</h2>
-            <p class="sub">Workspace projects detected at <span id="projects-root"></span></p>
-            <div id="projects-list" class="empty-state">
-              No projects yet. Create a folder inside the workspace `projects/`.
+            <p class="sub">
+              Workspace projects at <span id="projects-root"></span> — notes flow into LUNA's context when a
+              project is active
+            </p>
+            <div class="proj-toolbar">
+              <input id="proj-new" placeholder="New project name..." autocomplete="off" />
+              <button id="proj-create" class="icon-btn">Create</button>
+              <select
+                id="proj-active"
+                class="proj-active"
+                title="Active project — its notes are injected into chat context"
+              ></select>
             </div>
+            <div id="proj-list" class="empty-state">Loading projects...</div>
+            <div id="proj-notes" class="asset-section"></div>
           </div>
         </section>
 
@@ -159,21 +234,266 @@
         <section id="view-settings" class="view">
           <div class="panel">
             <h2>SETTINGS</h2>
-            <p class="sub">Asset manager — everything auto-detected in the workspace (spec 3)</p>
-            <div id="asset-root"></div>
-            <div id="assignment" class="asset-section"></div>
-            <button id="btn-rescan" class="icon-btn">Re-scan workspace</button>
-            <div id="asset-llm" class="asset-section"></div>
-            <div id="asset-stt" class="asset-section"></div>
-            <div id="asset-tts" class="asset-section"></div>
-            <div id="asset-wakeword" class="asset-section"></div>
-            <div id="asset-chars" class="asset-section"></div>
-            <div id="asset-anim" class="asset-section"></div>
-            <div id="asset-ref" class="asset-section"></div>
+            <p class="sub">
+              One coherent settings surface — General, AI, Voice, Character, Memory, Automation, Paths (spec
+              23)
+            </p>
+            <div class="settings-tabs" id="settings-tabs">
+              <button class="set-tab on" data-set-tab="general">General</button>
+              <button class="set-tab" data-set-tab="ai">AI</button>
+              <button class="set-tab" data-set-tab="voice">Voice</button>
+              <button class="set-tab" data-set-tab="character">Character</button>
+              <button class="set-tab" data-set-tab="memory">Memory</button>
+              <button class="set-tab" data-set-tab="automation">Automation</button>
+              <button class="set-tab" data-set-tab="paths">Paths</button>
+            </div>
+
+            <div id="settings-body">
+              <div class="set-panel" id="set-general">
+                <div class="assign-grid">
+                  <label class="assign-row">
+                    <span>Theme</span>
+                    <select id="cfg-theme">
+                      <option value="dark">Dark (default)</option>
+                      <option value="light">Light</option>
+                    </select>
+                  </label>
+                  <label class="assign-row">
+                    <span>Wake word (Hey Luna)</span>
+                    <select id="cfg-wakeword">
+                      <option value="off">Off</option>
+                      <option value="on">On</option>
+                    </select>
+                  </label>
+                  <label class="assign-row">
+                    <span>Input mode</span>
+                    <select id="cfg-voice-mode">
+                      <option value="ptt">Push-to-talk (default)</option>
+                      <option value="always">Always listening</option>
+                      <option value="wake">Wake word only</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="assign-grid">
+                  <label class="assign-row">
+                    <span>Start with Windows</span>
+                    <select id="cfg-startwin">
+                      <option value="false">Off</option>
+                      <option value="true">On</option>
+                    </select>
+                  </label>
+                  <label class="assign-row">
+                    <span>Start minimized to tray</span>
+                    <select id="cfg-startmin">
+                      <option value="false">Off</option>
+                      <option value="true">On</option>
+                    </select>
+                  </label>
+                  <label class="assign-row">
+                    <span>PTT hotkey</span>
+                    <input id="cfg-hotkey" type="text" value="Space" />
+                  </label>
+                </div>
+              </div>
+
+              <div class="set-panel" id="set-ai">
+                <h3 class="sub">
+                  Online providers (Gemini / Claude / OpenAI / Ollama) land with Core's Provider System (§4)
+                </h3>
+                <div id="ai-list" class="empty-state">Scanning workspace...</div>
+                <div id="assignment" class="asset-section"></div>
+                <div id="asset-llm" class="asset-section"></div>
+                <h3 class="sub">Chat behavior</h3>
+                <div id="chat-settings" class="asset-section"></div>
+              </div>
+
+              <div class="set-panel" id="set-voice">
+                <h3 class="sub">Voice &amp; speech (spec 11)</h3>
+                <div class="assign-grid">
+                  <label class="assign-row">
+                    <span>Language</span>
+                    <select id="cfg-language">
+                      <option value="en">English</option>
+                      <option value="hi">Hindi</option>
+                      <option value="ur">Urdu</option>
+                      <option value="hinglish">Hinglish (auto)</option>
+                    </select>
+                  </label>
+                  <label class="assign-row">
+                    <span>Microphone</span>
+                    <input id="cfg-mic" type="text" placeholder="default device" />
+                  </label>
+                  <label class="assign-row">
+                    <span>Wake sensitivity</span>
+                    <input id="cfg-sensitivity" type="number" min="0" max="1" step="0.05" />
+                  </label>
+                </div>
+                <div class="assign-grid">
+                  <label class="assign-row">
+                    <span>TTS enabled</span>
+                    <select id="cfg-tts-enabled">
+                      <option value="true">On</option>
+                      <option value="false">Off</option>
+                    </select>
+                  </label>
+                  <label class="assign-row">
+                    <span>Auto-speak replies</span>
+                    <select id="cfg-tts-auto">
+                      <option value="true">On</option>
+                      <option value="false">Off</option>
+                    </select>
+                  </label>
+                  <label class="assign-row">
+                    <span>Speech speed</span>
+                    <input id="cfg-tts-length" type="number" min="0.3" max="2" step="0.1" />
+                  </label>
+                </div>
+                <div id="tts-status" class="asset-section"></div>
+                <div id="voice-assign" class="asset-section"></div>
+                <h3 class="sub">Speaker recognition — voice ID (spec 32.4)</h3>
+                <div id="enroll" class="enroll-card glass">
+                  <p id="enroll-state" class="sub">
+                    Not enrolled. Enroll a short voice sample so the wake word only activates for your voice.
+                  </p>
+                  <div class="enroll-btns">
+                    <button id="enroll-btn" class="icon-btn">Record sample</button>
+                    <button id="re-enroll-btn" class="icon-btn">Re-enroll</button>
+                  </div>
+                  <label class="assign-row enroll-opt">
+                    <span>Guest mode for unrecognized voices</span>
+                    <select id="cfg-guest">
+                      <option value="false">Off</option>
+                      <option value="true">On</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <div class="set-panel" id="set-character">
+                <h3 class="sub">Floating window (applies next time it opens)</h3>
+                <div class="assign-grid">
+                  <label class="assign-row">
+                    <span>Width</span>
+                    <input id="cfg-float-w" type="number" min="220" max="800" />
+                  </label>
+                  <label class="assign-row">
+                    <span>Height</span>
+                    <input id="cfg-float-h" type="number" min="320" max="1000" />
+                  </label>
+                  <label class="assign-row">
+                    <span>Opacity</span>
+                    <input id="cfg-float-opacity" type="number" min="0.4" max="1" step="0.05" />
+                  </label>
+                  <label class="assign-row">
+                    <span>Click-through (ghost)</span>
+                    <select id="cfg-float-ghost">
+                      <option value="false">Off</option>
+                      <option value="true">On</option>
+                    </select>
+                  </label>
+                </div>
+                <div id="asset-chars" class="asset-section"></div>
+                <div id="asset-anim" class="asset-section"></div>
+                <div id="asset-ref" class="asset-section"></div>
+              </div>
+
+              <div class="set-panel" id="set-memory">
+                <h3 class="sub">Memory lifecycle (spec 6–7)</h3>
+                <div class="assign-grid">
+                  <label class="assign-row">
+                    <span>Session expiry (days)</span>
+                    <input id="cfg-mem-days" type="number" min="1" max="90" />
+                  </label>
+                  <label class="assign-row">
+                    <span>Auto-save sessions</span>
+                    <select id="cfg-mem-autosave">
+                      <option value="false">Off</option>
+                      <option value="true">On</option>
+                    </select>
+                  </label>
+                  <label class="assign-row">
+                    <span>Ask before deleting expired</span>
+                    <select id="cfg-mem-ask">
+                      <option value="true">On</option>
+                      <option value="false">Off</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+
+              <div class="set-panel" id="set-automation">
+                <h3 class="sub">Automation &amp; skills (spec 13, 32.1, 32.6)</h3>
+                <div class="assign-grid">
+                  <label class="assign-row">
+                    <span>Confirm before destructive actions</span>
+                    <select id="cfg-auto-confirm">
+                      <option value="true">On</option>
+                      <option value="false">Off</option>
+                    </select>
+                  </label>
+                  <label class="assign-row">
+                    <span>Proactive mode</span>
+                    <select id="cfg-auto-proactive">
+                      <option value="false">Off</option>
+                      <option value="true">On</option>
+                    </select>
+                  </label>
+                </div>
+                <div id="skills" class="asset-section">
+                  <h3 class="sub">Skills (spec 32.6)</h3>
+                  <div class="empty-state">
+                    No skills installed. Drop a folder with a manifest.json into D:\own-ai\skills\ to add one.
+                  </div>
+                </div>
+              </div>
+
+              <div class="set-panel" id="set-paths">
+                <div id="asset-root"></div>
+                <div class="mem-toolbar">
+                  <button id="btn-rescan" class="icon-btn">Re-scan workspace</button>
+                </div>
+                <h3 class="sub">Ollama API</h3>
+                <div class="empty-state">Ollama API: <span id="ollama-url"></span></div>
+                <div id="asset-stt" class="asset-section"></div>
+                <div id="asset-tts" class="asset-section"></div>
+                <div id="asset-wakeword" class="asset-section"></div>
+                <h3 class="sub">Activity log</h3>
+                <div class="mem-toolbar">
+                  <button id="btn-activity-refresh" class="icon-btn">Refresh</button>
+                  <button id="btn-activity-clear" class="icon-btn">Clear log</button>
+                </div>
+                <div id="activity-list" class="empty-state">Loading activity...</div>
+              </div>
+            </div>
           </div>
         </section>
       </main>
     </div>
+
+    <div id="toasts" class="toast-host"></div>
+
+    <div id="perm-dialog" class="perm-dialog" hidden>
+      <div class="perm-card glass">
+        <h3>LUNA needs permission</h3>
+        <p id="perm-action" class="perm-action"></p>
+        <p id="perm-detail" class="perm-detail"></p>
+        <div class="perm-btns">
+          <button id="perm-deny" class="icon-btn">Deny</button>
+          <button id="perm-allow" class="icon-btn primary">Allow</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="digest-card" class="digest-card glass" hidden>
+      <h3>While you were away</h3>
+      <p id="digest-summary"></p>
+      <ul id="digest-items"></ul>
+      <div class="digest-btns">
+        <button id="digest-activity" class="icon-btn">Open activity log</button>
+        <button id="digest-close" class="icon-btn">Dismiss</button>
+      </div>
+    </div>
+
     <script type="module" src="./src/dashboard.ts"></script>
   </body>
 </html>

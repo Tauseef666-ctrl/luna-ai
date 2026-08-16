@@ -1,0 +1,80 @@
+Plan — Agent B (Experience: 2D Character, UI, Voice, Dashboard)
+Update this file at the end of every work session. Keep entries short. This is a tracking log, not prose documentation — see AGENTS.md for the full task list and luna-spec.md for spec details.
+Last updated: 2026-08-15
+Status: In progress — Experience shared-contract layer (transparent float, lip-sync, toasts/digest/permission UI, status cards, settings tabs, voice pipeline UI)
+
+Task Checklist
+[x] 1. 2D character rigging pipeline (§2.1, §2.2) — interim CSS motion rig over img1/img2 (v0.4). Live2D/Rive rig files still require the external rig editor; runtime plays finished rigs from characters/ when they land. No rigging tooling shipped.
+[x] 2. Floating window (§2.3, §9) — transparent frameless Electron window, both characters, drag/pin/close, resize, click-through toggle, voice waveform, point overlay, subtitle/status bar, cross-fade states (built 2026-08-15).
+[x] 3. Lip-sync + gesture playback (§2.3, §11, §12) — real audio-driven lip-sync (analyser level) + character:lipsync wired; PTT spacebar + "Stop" barge-in interrupts TTS instantly; viseme stream contract adopted.
+[x] 4. Design system implementation (§2.4) — theme.css tokens, glass panels, spacing grid, transition timing (v0.1–v0.4).
+[x] 5. Main Dashboard (§8) — shell, nav, transitions, top bar, status cards (enriched 2026-08-15).
+[x] 6. AI Dashboard status cards (§22) — dual LUNA/Shoya accent-color cards wired to shared state: online/offline, model, memory count, voice mode, active project (built 2026-08-15).
+[~] 7. Settings screens (§23) — tabbed panels General/AI/Voice/Character/Memory/Automation/Paths (Voice/Character/Automation/General built 2026-08-15; AI provider panel waits on Core §4).
+[~] 8. Voice pipeline UI layer (§11) — PTT spacebar + mic button + live waveform + language selector (en/hi/ur/hinglish) + listening visual (STT backend waits on Core).
+[x] 9. Visual Guidance overlay (§14) — point-overlay rendering on character:point (Core emitter pending; Character view has a demo trigger).
+[x] 10. Project Manager UI (§21) — project cards, active selector, notes, create/rename/delete (v0.4).
+[~] 11. System tray UI/menu (§25) — core tray menu exists (Open Assistant/Dashboard/Quit); expanded items (Switch AI, Memory, Projects, Settings) wait on Core actions.
+[x] 12. Notification digest UI (§32.5) — digest toast + "what did I miss" card on notification:digest (Core emitter pending; demo trigger included).
+[~] 13. Speaker/voice enrollment UI (§32.4) — enrollment panel stub (record → enrolled state, re-enroll, guest-mode indicator); backend waits on Core §32.4.
+[x] 14. UI Animations polish pass (§29) — chat thinking dots, button spinners, loading ellipsis, AI-switch pop (card + char), char state-switch pop + caption fade, status-line flick, hover lifts across cards/rows, reduced-motion support, float-window light theme (completed 2026-08-15).
+[x] 15. Global command feedback (§26, §27.1) — toast confirmations ("Switched to Shoya") + permission:request dialog → permission:response (built 2026-08-15).
+
+Currently Working On
+Experience side is DONE and compile-ready (typecheck + build green) — all 15 tasks marked [x] except the ones waiting on Core/rig editor:
+- Task 11 (tray menu expansion) — waiting on Core background-service hooks.
+- Task 7 (AI provider settings panel) — waiting on Core Provider System (§4).
+Remaining polish would be manual QA: run `npm run dev` and click through every screen.
+
+Blocked / Waiting On
+- Task 1: Live2D (.moc3) or Rive (.riv) rig files need the external rig editor + art layer separation. CSS rig remains the runtime visual until rigs land in D:\own-ai\characters\.
+- Task 3: true phoneme/viseme stream from Core TTS (currently lip-sync driven by real audio analyser level — works, but contract character:lipsync payload consumed).
+- Task 6/7: provider/model display for online providers waits on Core AI Provider System (§4).
+- Task 8: faster-whisper STT backend waits on Core (UI + PTT shell ready).
+- Tasks 11: tray menu actions (Switch AI, Pause/Enable Listening, Memory, Projects, Settings) wait on Core background-service hooks.
+- Task 13: voiceprint backend waits on Core §32.4 (UI stub ready, sends nothing real yet).
+- Task 9/12: character:point + notification:digest emitters live in Core; Experience renders whenever they fire (demo triggers included until then).
+
+Shared Contract Changes I've Proposed
+- (2026-08-15) Adopted all AGENTS.md shared-contract channels on the Experience side: Core→Exp: character:setState, character:lipsync, character:point, character:subtitle, ai:switched, permission:request, notification:digest. Exp→Core: voice:input, hotkey:pressed, permission:response, window:floating:reposition, window:floating:resize.
+- (2026-08-15) NEW: float:clickThrough (Exp→Core) — toggles the floating window's ignore-mouse-events (spec §2.3 click-through mode). Used by float window toolbar.
+- (2026-08-15) types.ts: CharState expanded to full §2.3 list (happy/confused/coding/searching/explaining/pointing/waiting/error/success/goodbye added to existing 5). Added CharId, LipsyncPayload, PointPayload, AiSwitchPayload, PermissionRequest, DigestItem, DigestPayload. LunaConfig += voice{language,micDevice}, float{width,height,clickThrough,opacity}. 
+- (2026-08-15) preload: exposed all shared-contract listeners/senders + tts.onLevel (surfaced the existing tts:level broadcast).
+- (2026-08-15) permission:response is received by main and re-broadcast as permission:resolved for Experience visual feedback (toast). Core keeps the real permission logic when it lands.
+
+Session Log
+[2026-08-15] — UI Animations polish pass (§29) completed:
+- Chat: pending LUNA message shows animated "thinking" dots (msg.thinking).
+- Loading: empty-state hosts get a loading ellipsis; btn-rescan / btn-activity-refresh show a spinner while working (icon-btn.loading).
+- AI switch (§27.1): switching card pops (card-pop) + the active character pops (switch-pop) in BOTH dashboard and float window; switch-btn hover glow.
+- Character state cross-fade (§12): every setState triggers a subtle char-pop on the art + caption fade-in (character.ts state-switch class); status-line flick on state change.
+- Hover polish: hover lift on ai-card / char-card, mem-row / session-row (also covers projects + activity), asset-chip, pipe-row, set-tab, icon-btn press scale, float-toolbar press scale.
+- Accessibility: prefers-reduced-motion guard disables animations/transitions.
+- Float window now follows the light theme (frame/subtitle/toolbar/point-label) + applies cfg.float.opacity to the frame.
+- Verified: typecheck ✓, prettier ✓, build ✓.
+[2026-08-15] — Finished the Experience shared-contract layer (compile-ready):
+- dashboard.ts: bound the new index.html — AI status cards (refreshAiCards), settings tabs + all cfg-* controls (theme/wakeword/voice-mode/startwin/startmin/hotkey/language/mic/sensitivity/tts toggles/float size+opacity+ghost/mem lifecycle/automation confirm+proactive/guest), AI-switch button + theme toggle + onAiSwitched + onVoiceHeard + onPermissionRequest/Resolved + onDigest, PTT spacebar, TTS playback lip-sync on chat replies (speaking char), speaker-enrollment stub, contract demos (point/permission/digest/switch).
+- theme.css: added styles for all new UI — extra char states (happy/confused/coding/searching/explaining/pointing/waiting/error/success/goodbye), .char2d.active highlight ring, AI cards, settings tabs/panels/assign-grid rows, toasts (+kinds), perm-dialog, digest-card, enroll-card, float-wave + live, point-overlay/arrow/label + pulse-out, light theme (body[data-theme]).
+- mock-bridge.ts: already mirrored the full LunaBridge; made config.set persist in-session so settings changes reflect live.
+- types.ts + config.ts DEFAULTS: added memory{sessionDays,autoSave,askBeforeDelete} + voiceId{enabled,guest} config fields (Settings Memory panel + Speaker enrollment).
+- agents.md shared contract updated (ai:switch, character:set, permission:resolved, voice:heard, float:clickThrough, full config shape). Notes added to plan code A.
+- Verified: npm run typecheck ✓ (node + web), npx prettier ✓, npm run build ✓.
+[2026-08-15] — Built the Experience shared-contract layer:
+- Transparent float window: removed opaque panel box (spec 2.3 true transparency), added voice waveform, click-through toggle, point overlay (character:point), digest toast, permission dialog (permission:request → permission:response), ai:switched toast + active-char highlight, cross-fade state transitions, resize.
+- Real lip-sync: TTS audio analyser level drives the mouth/equalizer (tts-audio onLevel); character:lipsync also consumed; "Stop"/spacebar barge-in stops TTS instantly (tts:stop).
+- Dashboard: AI status cards (LUNA violet / Shoya cyan — online/offline, model, memory count, voice mode, active project), toast host, permission dialog, digest card, settings tabs (General/AI/Voice/Character/Memory/Automation/Paths), voice panel (language, TTS toggles, PTT mode), character panel (float size/opacity/click-through), automation panel (confirm toggle), speaker-enrollment stub, demo triggers for point/permission/digest.
+- Main: float:clickThrough / float:reposition / float:resize IPC handlers; permission:response re-broadcast as permission:resolved.
+- mock-bridge: mirrored all new bridge methods + demo emitters.
+NOT for Agent A: no core logic touched beyond float-window IPC (Agent B ownership) + feedback broadcast. Config fields voice/float are additive (defaults merge in config.ts).
+
+Notes / Decisions Made Along the Way
+- Floating window keeps BOTH characters side-by-side (user preference from v0.4 feedback: "show both characters") while highlighting the active AI per §27.1. Spec §2.3's single-character float is honored via the active highlight + AI-switch swap of front/center emphasis.
+- character:point targetX/targetY are screen coords (per contract); the overlay converts to window-local coords via window.screenX/screenY.
+- Viseme stream consumed as number[] (normalized mouth energy per step); Experience also uses real audio level as an always-working fallback so lip-sync never depends on Core.
+- Settings panels read/write config through the existing config:get/set bridge (Core-owned config file, Experience is the UI).
+
+[2026-08-16] Agent B sprint 3 (Experience - voice UI):
+- Microphone ACTIVATION buttons added: float window Mic button is now a toggle (click to listen, click again to transcribe) driving the real capture; dashboard chat form gained a Mic toggle button too; Spacebar hold-to-talk in both windows now records real audio (was a hotkey stub). New src/renderer/src/voice.ts: getUserMedia -> ScriptProcessor 16kHz mono -> WAV base64 + live analyser level (drives float waveform). Toggle state styled (.chat-form button.icon-btn[.on], .float-toolbar button.on).
+- STT contract: voice:audio (new, mirrored in mock-bridge) sends { wavBase64, sampleRate, language } to Core; Core transcribes (local Whisper) and replies through voice:heard + chat reply. Language hint read from config voice.language.
+- Lip-sync/character states flow unchanged; 'Transcribing...' status + waiting char state while STT runs.
+- Typecheck green. No commits (user commits after final build).

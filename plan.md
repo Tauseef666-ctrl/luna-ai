@@ -1,23 +1,25 @@
 # LUNA — Build Plan (TODO)
 
-Project: **LUNA** — Advanced Windows AI Companion (spec: [`LUNA_spec.md`](LUNA_spec.md))
-Repository: **https://github.com/Tauseef666-ctrl/luna-ai** (spec §32.5 — recorded)
-Platform: Windows desktop app (**Electron + Babylon.js**), offline-first.
+Project: **LUNA** — Advanced Windows AI Companion (spec: [`luna-spec.md`](luna-spec.md) — **v2, 2D Character Pivot**)
+Repository: **https://github.com/Tauseef666-ctrl/luna-ai** (spec §32.5; plan records actual URL)
+Platform: Windows desktop app (**Electron**), offline-first.
 Dev workflow: VS Code (native Windows) + Shoya coding agent → Git → GitHub Actions (windows-latest) → `LUNA-Setup.exe`.
 
 > Check a box only when the item is **done and verified working** in the running app.
+>
+> **v2 spec delta (read `luna-spec.md` first):** rigged 2D characters (Live2D/Rive, from img1/img2 art), **true floating-window transparency**, **always-on background service + wake word (tray-resident)**, AI Provider System (Gemini/Claude/OpenAI-compat/Ollama, Windows Credential Manager), Shoya = persona routing to OpenCode CLI + providers, full §32 in scope (proactive routines, reminders, calendar/email/clipboard, action self-verification, speaker recognition, digest, plugin/skills, browser automation, multi-agent orchestration).
 
 ---
 
-## 0. Resolved Decisions (Spec §32 — Final, Do Not Re-ask)
+## 0. Resolved Decisions (Spec §33 — Final, Do Not Re-ask)
 
 | # | Decision | Status |
 |---|---|---|
-| 32.1 | **User supplies final 3D models** (`.glb`/`.gltf` dropped into `characters/`); app loads them generically (Babylon `SceneLoader`), maps clips to states by name, lip-syncs (jaw bone or ARKit visemes), applies motion overlay. Placeholder primitive rig remains the fallback until a model is assigned in Settings. | Placeholder in; generic loader in v0.3.0; models pending user |
-| 32.2 | **Local inference = Ollama local REST API** (`http://localhost:11434`). Client module implemented. No raw GGUF loading / `node-llama-cpp` for v1. | Client done (incl. streaming); Ollama binary install pending |
-| 32.3 | **Wake word: Push-to-Talk default.** Do NOT reuse `hey_jarvis` models. "Hey Luna" = stretch goal via Picovoice Porcupine custom keyword. | Push-to-talk noted; voice pipeline pending |
-| 32.4 | **Renderer: Babylon.js** (not Three.js). | Done — v9.21.1 in use |
-| 32.5 | **GitHub repository** — URL recorded above, wired into the release workflow. | Done |
+| 32.1 | **Rigged 2D characters** (VTuber-style): Live2D Cubism preferred, **Rive** acceptable lighter-weight fallback — built from `reference\img1_nishimiya.png` (LUNA) + `img2_shoya.png` (Shoya). Runtime plays finished rig (`.moc3`/`.riv`) in `D:\own-ai\characters\`; rigging/segmentation tools are dev-time-only. **No 3D, no Babylon/Three, no procedural model generation.** | Interim CSS-motion rig in; Live2D/Rive pipeline pending |
+| 32.2 | **Local inference = Ollama local REST API** (`http://localhost:11434`). Client module implemented. No raw GGUF / `node-llama-cpp` path. | Client done (incl. streaming); Ollama install in progress |
+| 32.3 | **Background service always running** (tray-resident, "Start with Windows" opt-in). Push-to-talk is the default trigger; "Hey Luna" wake word = stretch via Picovoice Porcupine. Floating window must appear on wake/hotkey without opening the dashboard. | Architecture pending (v2 §10) |
+| 32.4 | **Renderer: Live2D Cubism SDK for Web or Rive** on a WebGL/Canvas layer in Electron for the 2D character. | Pipeline pending |
+| 32.5 | **GitHub repository** — recorded in plan; wired into the release workflow. | Done (repo URL known) |
 
 ---
 
@@ -38,13 +40,15 @@ Dev workflow: VS Code (native Windows) + Shoya coding agent → Git → GitHub A
 
 ### Remaining Blockers
 - [ ] **Ollama CLI not installed on this machine** — models are present as blob library; install Ollama and set `OLLAMA_MODELS=D:\own-ai\models\ollama` to go online (app client is ready)
-- [ ] **No 3D character/animation files** — placeholder rig shipped; generation pipeline (MakeHuman → Mixamo) to run in Phase 3.0
+- [~] **3D character/animation files** — **resolved by the v0.4.0 2D pivot**: characters are the concept art themselves, animated by CSS; no 3D files needed
 
 ---
 
 ## 2. Build Status — v0.1.0 (first build, released)
 
-Shipped and verified (app launches; Babylon WebGL2 renderer runs):
+> Historical note: v0.1.0 shipped a Babylon.js 3D placeholder stage; **the renderer pivot in v0.4.0 replaced it with animated 2D characters** (see §2e, §32.4) and removed the Babylon runtime.
+
+Shipped and verified (app launches):
 - [x] Electron + Babylon.js + TypeScript scaffold (`electron-vite`), old Tauri/Python build fully removed from repo
 - [x] Dark glassy dashboard shell, sidebar nav (Chat, Projects, AI Models, Memory, Shoya, Research, Automation, Settings), design-system palette §2.4
 - [x] Placeholder 3D rig in dashboard (full-body, glowing status ring) + floating window (half-body, windowsill framing): states idle/listening/thinking/speaking/working, breathing, lip-jaw mouth sync, cross-faded poses
@@ -78,18 +82,58 @@ Shipped and verified (typecheck ✓, build ✓, app boots clean):
 
 ---
 
-## 2c. Build Status — v0.3.0 (Character view + generic model pipeline + design pass)
+## 2c. Build Status — v0.3.0 (Character view + 3D loader prototype + design pass)
 
-Shipped and verified (typecheck ✓, build ✓, browser design preview via `npm run design`):
-- [x] **Generic 3D model loader** — `character.ts` loads any user-supplied `.glb/.gltf` (Babylon `SceneLoader`): bounding-box fit, clip→state mapping (idle/listening/thinking/speaking/working by name), jaw morph/bone lip-sync, breathing + idle life overlay
+Shipped and verified (typecheck ✓, build ✓). **Superseded in v0.4.0**: the 3D loader + model assignment below were replaced by the animated-2D pivot (§2e) — kept here for history:
+- [x] **Generic 3D model loader** (prototype) — `character.ts` loaded `.glb/.gltf` via Babylon `SceneLoader` (bounding-box fit, clip→state mapping, jaw morph/bone lip-sync) — **removed with the 3D pivot**
 - [x] **Asset serving via IPC** — `assets:image` (reference art → base64 data URL, `reference/` whitelisted) + `assets:binary` (models/animations → `Uint8Array`, `characters|animations|models/` whitelisted), exposed on preload as `window.luna.assets`
-- [x] **Character view** — new sidebar tab: LUNA + Shoya cards with concept art (img1–img4), current model/voice/LLM assignment, 5-step pipeline checklist (art → model → rig/anim → lip-sync → gestures)
-- [x] **Settings: character-model assignment** — LUNA/Shoya dropdowns from `scan.characters` → `config.character.{luna,shoya}.idle`; changing LUNA's model hot-reloads the dashboard rig; float window loads assigned model on open
+- [x] **Character view** — new sidebar tab: LUNA + Shoya cards with concept art (img1–img4), voice/LLM assignment, pipeline checklist
+- [x] **Settings: character-model assignment** (prototype) — LUNA/Shoya model dropdowns from `scan.characters` → `config.character.{luna,shoya}.idle` — **removed with the 3D pivot** (voice/LLM assignment kept)
 - [x] **Browser design preview** — `npm run design` serves `src/renderer` at `http://localhost:5173` via `mock-bridge.ts` (full LunaBridge mock: scans, sessions, memory, streaming, concept-art placeholders) — design/browse without Electron
-- [x] **Design pass** — stage floor glow, glass status card, panel gradient headers, character cards, animated pipeline dots, custom scrollbars (spec §2.4)
+- [x] **Design pass** — glass panels, character cards, animated pipeline dots, custom scrollbars (spec §2.4)
 - [x] App version 0.3.0 (sidebar + package.json)
 
-**Asset pipeline decision (§32.1, user-driven):** user supplies final `.glb/.gltf` models; app loads them generically and animates automatically (clip mapping + lip-sync + motion overlay). MakeHuman→Mixamo generation is dropped from the roadmap.
+**Asset pipeline decision (§32.1, flipped in v0.4.0):** 3D generation (MakeHuman→Mixamo) and user-supplied `.glb` models are **dropped**. LUNA/Shoya render as **2D animated characters** driven by their concept art.
+
+
+---
+
+## 2d. Build Status — v0.4.0 (chat settings, projects, activity log, long-context)
+
+Build in progress (typecheck ✓; not yet committed — deferred to save GitHub Actions quota):
+- [x] **Config-driven chat behavior** — Settings: temperature, max tokens, editable system prompt (persona) — persisted in config and actually applied to the Ollama request (`options.temperature` / `options.num_predict`)
+- [x] **Project manager (Phase 5 core)** — `src/main/projects.ts`: list / create / rename / delete under `<aiRoot>\projects\`; Projects view with active-project selector; active project's notes (project-tier memory) injected into the chat system prompt
+- [x] **Activity log (spec §17 core)** — `src/main/activity.ts`, persisted at `<aiRoot>\memory\luna-activity.json`; logged events: app start, scan, config change, chat send/error, session create/save/unsave/remove, memory add/delete, project create/rename/delete; Settings view lists latest 100 with Clear
+- [x] **Long-session context** — turns older than the last 12 are summarized via the assigned model (temperature 0.2) and injected as a rolling "conversation summary" system message (naive truncation fallback when offline)
+- [x] `projects` + `activity` preload bridges and mock-bridge mirrors (browser preview parity)
+
+---
+
+## 2e. Build Status — renderer pivot (2D animated characters, both companions; ships in v0.4.0)
+
+User feedback: "drop the 3D model / it looks heavy — show both characters side by side, moving, with 2D animations." Implemented (uncommitted, bundles with the v0.4.0 commit):
+- [x] **Renderer pivot — Babylon.js removed** — deps (`@babylonjs/*`) dropped from `package.json`; `character.ts` rewritten as a **CSS/HTML 2D motion rig** over the concept art (no WebGL, ~14 MB → <1 MB bundle, 4.5 min → ~40 s build)
+- [x] **LUNA = `img1_nishimiya.png`, Shoya = `img2_shoya.png`** — the actual concept art is now the live character visual everywhere (`assets:image` IPC)
+- [x] **Dashboard shows both characters side-by-side** — LUNA (violet) + Shoya (cyan), each breathing/animating and cycling their own "works" activity captions
+- [x] **Floating window hosts both characters** — drag LUNA and Shoya anywhere to reposition (pointer-drag with bounds clamping); both react to chat states (LUNA mirrors state; Shoya listens while LUNA speaks)
+- [x] **Character view live preview** — both characters large and moving; Idle/Listening/Thinking/Speaking/Working test buttons drive the animations on demand
+- [x] **Animation states** — idle float, listening sway, thinking tilt, speaking bounce + speech equalizer bars + glowing pulse, working pulse; hover = friendly wave
+- [x] State-driven captions/tickers; Shoya has its own activity lines
+
+---
+
+## 2f. Build Status — v2 spec alignment (in progress, uncommitted)
+
+Aligning the shipped v0.4.0 to the v2 spec (`luna-spec.md`). Work items (v0.5.0):
+- [ ] **True transparent floating window** (§2.3) — `transparent: true` frameless window, no visible panel/box behind the character, only character + subtitle/status bar over the desktop
+- [ ] **Background service (§10)** — tray-resident main process (no window on start), "Start with Windows" opt-in, push-to-talk global hotkey summons the floating window without opening the dashboard, lightweight idle (no rig rendering)
+- [ ] **AI Provider System (§4)** — unified providers: Ollama (local) + Google Gemini + Anthropic Claude + OpenAI-compatible; API keys in Windows Credential Manager (no hardcoded keys); Settings per-provider (Base URL, Model, Temperature, Max Tokens, System Prompt, Timeout) + Test Connection (Connected/Disconnected/Invalid Key/Rate Limited/Offline/Model Unavailable)
+- [ ] **Shoya = persona routing (§1, §16)** — auto-detect Shoya backends (OpenCode CLI on PATH / known dirs / VS Code extension), per-task routing, "Open Shoya for this project and continue"
+- [ ] **2D rig pipeline (§2.2)** — Live2D (`.moc3`) or Rive (`.riv`) rig produced from img1/img2 (dev-time tooling by Shoya, removed after export) → rendered on WebGL canvas in Electron; interim: current CSS-motion characters remain until rig files exist
+- [ ] **Action self-verification (§32.3)** — verify results (file exists / exit code) before reporting success
+- [ ] **Plugin/Skill system (§32.6)** — `skills/<name>/manifest.json` registry, permission tiers, Skills manager in Settings→Automation
+- [ ] **Proactive routines + reminders (§32.1)** — time-based routines, one-off/recurring reminders fired by the background service, quiet hours
+- [ ] **Calendar/Email/Clipboard (§32.2)** + **Notification digest (§32.5)** + **Browser automation (§32.7)** + **Orchestration (§32.8)** — scoped after core items
 
 ---
 
@@ -97,7 +141,7 @@ Shipped and verified (typecheck ✓, build ✓, browser design preview via `npm 
 
 ### 1.1 Project Setup
 - [x] Git repo for app source, `.gitignore` correct
-- [x] `package.json` — Electron + **Babylon.js** + TypeScript, electron-vite
+- [x] `package.json` — Electron + TypeScript, electron-vite (Babylon removed in v0.4.0 — 2D renderer)
 - [x] Prettier config + `format`/`format:check` scripts
 - [ ] ESLint — **blocked**: `typescript-eslint@8` peer `typescript >=4.8.4 <6.1.0` conflicts with TS 7.0.2; add when typescript-eslint supports TS7
 - [x] Electron app boots to dark `#0A0A12` shell (§2.4)
@@ -113,7 +157,7 @@ Shipped and verified (typecheck ✓, build ✓, browser design preview via `npm 
 - [x] Manual **Re-scan** button (Settings)
 - [ ] Auto-rescan on AI-root path change (path-change UI pending)
 - [x] Assign active **LLM + TTS voice** to LUNA or Shoya from the asset manager (chat uses LUNA's assigned model)
-- [x] Assign 3D character model to LUNA or Shoya from the asset manager (Settings; hot-reloads dashboard rig) — v0.3.0
+- [~] Assign 3D character model — **removed with the v0.4.0 2D pivot** (characters are the concept art themselves; no model files needed)
 
 ---
 
@@ -153,34 +197,30 @@ Shipped and verified (typecheck ✓, build ✓, browser design preview via `npm 
 
 ---
 
-## Phase 3 — 3D Characters & Rendering (§2, §32.1, §32.4)
+## Phase 3 — Characters & Rendering (§2, §32.1, §32.4) — 2D animated
 
-### 3.0 Character Asset Generation
-**Approach (v0.3.0): user supplies final `.glb`/`.gltf` models** — dropped into `D:\own-ai\characters\`, assigned in Settings. App animates them automatically: clip→state mapping, lip-sync (jaw bone or ARKit visemes), motion overlay. No generation tooling needed.
-- [x] Generic loader (SceneLoader) + auto-fit + clip mapping + lip-sync — v0.3.0
-- [ ] **User model delivery** — awaiting `.glb`/`.gltf` for LUNA and Shoya (stylized to match `reference\img1–4`)
-- [ ] Clip set per character: idle, listening, thinking, speaking, working (+ optional happy/confused/etc. when provided)
+**Approach (v0.4.0, final): 2D animated characters.** LUNA = `reference\img1_nishimiya.png`, Shoya = `reference\img2_shoya.png`. A CSS/HTML motion rig (`src/renderer/src/character.ts`) animates them via per-state keyframes; no 3D engine, no model files, no generation tooling.
 
 ### 3.1 Character Pipeline
-- [x] **Babylon.js** renderer in Electron (WebGL2, GPU) — §32.4
-- [x] **Placeholder fallback rig** (primitive humanoid + blendshape-jaw + arm IK pivots) — §32.1
-- [x] **Generic model loader** — load assigned `.glb`/`.gltf` from Settings; auto-fallback to placeholder — v0.3.0
-- [x] Same rig shared by floating-window (half-body) and dashboard (full-body); float loads assigned model
-- [ ] Arm/hand IK for dynamic pointing at screen coords (§2.2 Pointing)
-- [ ] Facial blendshapes layered independently over body animation
-- [ ] FBX/VRM import support if user provides those formats
+- [x] **2D motion rig** — breathing float, listening sway, thinking tilt, speaking bounce + speech equalizer, working pulse, hover wave (v0.4.0)
+- [x] **Live art via IPC** — concept images served as data URLs (`assets:image`), `img1`/`img2` are the runtime visuals (v0.4.0)
+- [x] **Dashboard: LUNA + Shoya side-by-side**, each with own state + activity ticker (v0.4.0)
+- [x] **Floating window: both characters, draggable** — pointer-drag repositions them in the frame; states mirror chat (v0.4.0)
+- [x] **Character view: live preview** — large animated characters + Idle/Listening/Thinking/Speaking/Working test buttons (v0.4.0)
+- [ ] **TTS lip-sync** — equalizer/mouth rhythm driven by real voice output (voice engine pending, §4.2)
+- [ ] **2D sprite upgrade** (optional, user-supplied) — animated sprite sheets / frame strips replace the static art; same state rig applies
 
 ### 3.2 Animation States
-- [x] Procedural states: Idle, Listening, Thinking, Speaking, Working (placeholder)
+- [x] Procedural states: Idle, Listening, Thinking, Speaking, Working (2D, v0.4.0)
 - [ ] Full §2.2 library: Happy, Confused, Coding, Searching, Explaining, Pointing, Waiting, Error, Success, Goodbye
-- [ ] Real-time **lip-sync** via TTS visemes (§2.1, §11) — mouth channel wired, source pending
-- [ ] Character accent colors on rings: LUNA violet `#B24BF3→#7B5CFA`, Shoya cyan `#3AD1FF→#4C6FFF` — LUNA done, Shoya pending
+- [ ] Character accent glows: LUNA violet `#B24BF3→#7B5CFA`, Shoya cyan `#3AD1FF→#4C6FFF` — both wired in v0.4.0
 
 ### 3.3 Views
-- [x] Floating window (half-body, windowsill, always-on-top, pin, subtitle/status)
-- [x] Dashboard (full-body on glowing platform) + status card
-- [ ] Full gesture set (wave, explain, point, thumbs-up, lip-sync-on-any-pose)
-- [ ] Performance: pause render when minimized, low-spec scaling, GPU fallback (§31)
+- [x] Floating window (both characters, always-on-top, pin, subtitle/status, drag to move)
+- [x] Dashboard (LUNA + Shoya on glowing stage) + status card
+- [ ] Full gesture set (wave, explain, point, thumbs-up) as 2D sprite animations when sprites arrive
+- [ ] Performance: pause animations when minimized (CSS `animation-play-state`) — trivial once wired
+
 
 ---
 
@@ -277,5 +317,5 @@ Shipped and verified (typecheck ✓, build ✓, browser design preview via `npm 
 ## Open Questions / Decisions Needed
 
 - [ ] **Ollama install**: OK to install Ollama for Windows on this machine (`OLLAMA_MODELS=D:\own-ai\models\ollama`)? Needed to bring the app online locally.
-- [ ] **User 3D models**: provide final LUNA/Shoya `.glb`/`.gltf` files (stylized per `reference\img1–4`) — drop into `D:\own-ai\characters\`, then assign in Settings.
+- [ ] **Character art direction**: confirm LUNA = `img1_nishimiya.png` and Shoya = `img2_shoya.png` as their live visuals (currently the app's default). Optional: user-supplied 2D sprite sheets later for richer motion.
 - [ ] Confirm the reference-image rename to spec names is acceptable (`img1_nishimiya.png`, `img2_shoya.png`, `img3_nishimiya_full.png`, `img4_shoya_full.png`).

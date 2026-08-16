@@ -35,6 +35,7 @@ reference/*
 
 # ---- Model / asset weight files anywhere ----
 *.gguf
+*.ggml
 *.safetensors
 *.onnx
 *.onnx.json
@@ -43,9 +44,16 @@ reference/*
 *.glb
 *.fbx
 
+# ---- Bundled toolchains (ollama binary, python runtime) ----
+tools/
+
 # ---- Secrets ----
 .env
 .env.*
 *.key
 *.pem
 !*.key.example
+
+# Encrypted credential store written to the workspace root by the provider
+# system (DPAPI secrets.bin, never committed).
+.luna/

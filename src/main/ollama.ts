@@ -5,6 +5,11 @@ export interface ChatMessage {
   content: string
 }
 
+export interface ChatOptions {
+  temperature?: number
+  maxTokens?: number
+}
+
 export async function ollamaHealth(url: string): Promise<boolean> {
   try {
     const res = await fetch(`${url}/api/version`, { signal: AbortSignal.timeout(1500) })
@@ -31,11 +36,21 @@ export async function listOllamaModels(url: string): Promise<OllamaModel[]> {
   }
 }
 
-export async function ollamaChat(url: string, model: string, messages: ChatMessage[]): Promise<string> {
+export async function ollamaChat(
+  url: string,
+  model: string,
+  messages: ChatMessage[],
+  opts: ChatOptions = {}
+): Promise<string> {
+  const body: Record<string, unknown> = { model, messages, stream: false }
+  if (opts.temperature !== undefined)
+    body.options = { ...(body.options as object), temperature: opts.temperature }
+  if (opts.maxTokens !== undefined)
+    body.options = { ...(body.options as object), num_predict: opts.maxTokens }
   const res = await fetch(`${url}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, messages, stream: false }),
+    body: JSON.stringify(body),
     signal: AbortSignal.timeout(120000)
   })
   if (!res.ok) throw new Error(`Ollama error ${res.status}`)
@@ -49,12 +64,18 @@ export async function ollamaChatStream(
   url: string,
   model: string,
   messages: ChatMessage[],
-  onToken: (chunk: string) => void
+  onToken: (chunk: string) => void,
+  opts: ChatOptions = {}
 ): Promise<string> {
+  const body: Record<string, unknown> = { model, messages, stream: true }
+  if (opts.temperature !== undefined)
+    body.options = { ...(body.options as object), temperature: opts.temperature }
+  if (opts.maxTokens !== undefined)
+    body.options = { ...(body.options as object), num_predict: opts.maxTokens }
   const res = await fetch(`${url}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model, messages, stream: true }),
+    body: JSON.stringify(body),
     signal: AbortSignal.timeout(120000)
   })
   if (!res.ok) throw new Error(`Ollama error ${res.status}`)

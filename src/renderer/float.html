@@ -10,17 +10,46 @@
     <link rel="stylesheet" href="./src/theme.css" />
   </head>
   <body class="float-body">
-    <div class="float-frame glass">
-      <div class="float-canvas-wrap">
-        <canvas id="float-canvas"></canvas>
-        <div id="float-status" class="float-status">Ready to assist...</div>
-        <div id="float-subtitle" class="float-subtitle"></div>
+    <div class="float-frame">
+      <div class="float-char-wrap" id="float-char-wrap">
+        <div id="float-luna" class="float-char-slot"></div>
+        <div id="float-shoya" class="float-char-slot"></div>
       </div>
-      <div class="ptt-hint">push-to-talk (spec 32.3)</div>
+
+      <div id="point-overlay" class="point-overlay" hidden>
+        <span class="point-arrow" id="point-arrow"></span>
+        <span class="point-label" id="point-label"></span>
+      </div>
+
+      <div id="float-status" class="float-status">Ready to assist...</div>
+      <div class="float-wave" id="float-wave">
+        <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <div id="float-subtitle" class="float-subtitle"></div>
+
       <div class="float-toolbar">
+        <button id="btn-switch" title="Switch character (LUNA ↔ Shoya)">⇄</button>
         <button id="btn-pin" title="Always on top">Pin</button>
-        <button id="btn-mic" title="Microphone">Mic</button>
+        <button id="btn-ghost" title="Click-through (mouse passes through)">Ghost</button>
+        <button id="btn-mic" title="Microphone — click to listen, click again to transcribe">Mic</button>
+        <button id="btn-stop" title="Stop speaking (barge-in)">Stop</button>
         <button id="btn-close" title="Close">Close</button>
+      </div>
+
+      <div id="float-resize" class="float-resize" title="Resize"></div>
+
+      <div id="float-toasts" class="toast-host float-toasts"></div>
+
+      <div id="float-permission" class="perm-dialog" hidden>
+        <div class="perm-card glass">
+          <h3>LUNA needs permission</h3>
+          <p id="perm-action" class="perm-action"></p>
+          <p id="perm-detail" class="perm-detail"></p>
+          <div class="perm-btns">
+            <button id="perm-deny" class="icon-btn">Deny</button>
+            <button id="perm-allow" class="icon-btn primary">Allow</button>
+          </div>
+        </div>
       </div>
     </div>
     <script type="module" src="./src/float.ts"></script>
