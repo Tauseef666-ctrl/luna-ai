@@ -11,7 +11,7 @@ Dev workflow: VS Code (native Windows) + Shoya coding agent → Git → GitHub A
 >
 > **Operating model:** see [`agents.md`](agents.md) — two agents (A = core/backend, B = experience/renderer) build to one shared contract (`src/shared/types.ts`). Per-agent plan files (`plan code A`, `plan experence B.txt`) were removed (commit `2a8c01c`); **this `plan.md` is the master running status.**
 >
-> **Latest (2026-09-15):** v0.5.0 prep — env verification: **Piper ✓** (TTS→WAV verified), **Ollama ✓** (0.34.0, serving on 11434, models on D), **Whisper ✗** (SAC — deferred), **Three.js experiment removed** (cleanup done). Repo audit → **§2g**; IPC refactor → **§2h**; **AI Provider System (§4) fully done → §2i**; **Shoya panel + routing state → §2j**; **Tools/permissions (commands via dashboard dialog) → §2k**.
+> **Latest (2026-09-15):** v0.5.0 prep — env verification: **Piper ✓** (TTS→WAV verified), **Ollama ✓** (0.34.0, serving on 11434, models on D), **Whisper ✗** (SAC — deferred), **Three.js experiment removed** (cleanup done). Repo audit → **§2g**; IPC refactor → **§2h**; **AI Provider System (§4) fully done → §2i**; **Shoya panel + routing state → §2j**; **Tools/permissions → §2k**; **Action self-verification (§32.3) → §2l**.
 
 ---
 
@@ -136,7 +136,7 @@ Aligning the shipped v0.4.0 to the v2 spec (`luna-spec.md`). Work items (v0.5.0)
 - [x] **AI Provider System (§4)** — config defaults + management UI (**§2i**), encrypted keys (DPAPI), per-provider settings + Test Connection, non-streaming + **streaming** chat, online fallback when Ollama offline
 - [ ] **Shoya = persona routing (§1, §16)** — auto-detect Shoya backends (OpenCode CLI on PATH / known dirs / VS Code extension), per-task routing, "Open Shoya for this project and continue"
 - [ ] **2D rig pipeline (§2.2)** — Live2D (`.moc3`) or Rive (`.riv`) rig produced from img1/img2 (dev-time tooling by Shoya, removed after export) → rendered on WebGL canvas in Electron; interim: current CSS-motion characters remain until rig files exist
-- [ ] **Action self-verification (§32.3)** — verify results (file exists / exit code) before reporting success
+- [x] **Action self-verification (§32.3)** — `src/main/verify.ts` (`spawnVerified`/`fileExists`/`exitCodeCheck`); `launchApp`/`openUrl`/`runCommand` now verified with `next`-step hints; live-tested (calc ✓ / ENOENT ✗). See **§2l**.
 - [ ] **Plugin/Skill system (§32.6)** — `skills/<name>/manifest.json` registry, permission tiers, Skills manager in Settings→Automation
 - [ ] **Proactive routines + reminders (§32.1)** — time-based routines, one-off/recurring reminders fired by the background service, quiet hours
 - [ ] **Calendar/Email/Clipboard (§32.2)** + **Notification digest (§32.5)** + **Browser automation (§32.7)** + **Orchestration (§32.8)** — scoped after core items
@@ -217,7 +217,21 @@ Provider System (§4) is functionally complete: config defaults ✓, management 
 - `permission.ts` `registerPermissionHandler()` was already wired in `index.ts` (§2h refactor); dashboard already renders `#perm-dialog` and responds via `permission:response`; float dialog also wired — no additional UI changes needed.
 - `automation.confirm` config toggle (Settings → Automation, bound at `dashboard.ts:1453`) controls whether non-safe commands go through confirmation at all (honor it before calling `confirmCommand`). Verified: typecheck ✓, build ✓, smoke boot ✓.
 
-**Next:** Upgrade the remaining router-target actions to go through `requestPermission` (e.g., VS Code open, file operations when they land) + action self-verification wrapper (§32.3).
+**Next:** Upgrade the remaining router-target actions to go through `requestPermission` (e.g., file operations when they land) + action self-verification wrapper (§32.3).
+
+---
+
+## 2l. Action self-verification (§32.3 — done 2026-09-15)
+
+Spec §32.3: **never report success without checking the result actually happened** — every action must be verified, and failures must name what failed + offer a next step. Audit found two liars: `launchApp` always returned `true` (even when the app never started) and `openUrl` fired-and-forgot `shell.openExternal`. Also verified-but-mute: `runCommand` failures and the blocked/cancelled path returned no guidance.
+
+- New `src/main/verify.ts`: `Verification { ok, detail, next? }` + `fileExists(path)` + `exitCodeCheck(label, code, timedOut?)` + `spawnVerified(label, child, graceMs?)` — a spawn is only "started" if it stays alive past the grace window (or exits 0); ENOENT/quit-fast → `ok:false` with a concrete `next`.
+- `control.ts`: `launchApp` → `Promise<CommandResult>` (spawn + `spawnVerified`; returns verified detail, `next` on failure, activity-logged); `openUrl` → `Promise<CommandResult>` (awaits `shell.openExternal`, refuses non-http(s), `next` on failure); `runCommand` blocked/failure paths now return a `next` suggestion.
+- `shared/types.ts`: `CommandResult` gained additive `next?: string`.
+- `router.ts`: `windows` target awaits the new async `launchApp`/`openUrl`; failures surface as `… Next: <step>` via `withNext()`.
+- **Live-verified** the real module in Node: `calc.exe` → "started (still running after 800ms)" `ok:true`; a non-existent exe → "failed to start: … ENOENT" `ok:false`. Typecheck ✓, build ✓, smoke boot ✓.
+
+**Remaining self-verification surface:** file writes/deletes and future skill/browser actions should reuse `fileExists`/`exitCodeCheck` as they land (§32.6/§32.7); Shoya already verifies via execFile exit codes + provider errors.
 
 ---
 

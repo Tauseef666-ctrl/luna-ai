@@ -4,6 +4,7 @@ import { promisify } from 'node:util'
 import { loadConfig } from './config'
 import { activity } from './activity'
 import { requestPermission } from './permission'
+import { spawnVerified } from './verify'
 import type { CommandResult, WindowInfo } from '../shared/types'
 
 const execFileP = promisify(execFile)
@@ -74,20 +75,50 @@ export async function screenshot(): Promise<string> {
   return `data:image/png;base64,${b64}`
 }
 
-export function launchApp(command: string): boolean {
-  if (!command.trim()) return false
-  const child = spawn(command, { shell: true, detached: true, stdio: 'ignore' })
-  child.on('error', () => {
-    /* command not found / failed to spawn — caller reports the failure */
-  })
+export async function launchApp(command: string): Promise<CommandResult> {
+  const cmd = command.trim()
+  if (!cmd)
+    return {
+      ok: false,
+      confirmed: true,
+      output: 'Empty app name.',
+      next: 'Say which app to open, e.g. "open calculator".'
+    }
+  const child = spawn(cmd, { shell: true, detached: true, stdio: 'ignore' })
   child.unref()
-  return true
+  const v = await spawnVerified(cmd, child, 1500)
+  activity.log('automation', v.detail)
+  if (!v.ok) activity.log('automation', cmd.slice(0, 80) + ' — ' + v.detail + (v.next ? ' Next: ' + v.next : ''), 'warn')
+  return {
+    ok: v.ok,
+    confirmed: true,
+    output: v.ok ? `Launched "${cmd}"` : `Failed to launch "${cmd}" — ${v.detail}`,
+    next: v.ok ? undefined : v.next
+  }
 }
 
-export function openUrl(url: string): boolean {
-  if (!/^https?:\/\//i.test(url)) return false
-  void shell.openExternal(url)
-  return true
+export async function openUrl(url: string): Promise<CommandResult> {
+  if (!/^https?:\/\//i.test(url)) {
+    activity.log('automation', `Refused unsafe URL: ${url}`, 'warn')
+    return {
+      ok: false,
+      confirmed: true,
+      output: `Refused unsafe URL: ${url}`,
+      next: 'Only http/https URLs are opened.'
+    }
+  }
+  try {
+    await shell.openExternal(url)
+    return { ok: true, confirmed: true, output: `Opened ${url}` }
+  } catch (err) {
+    activity.log('automation', `Failed to open ${url}: ${(err as Error).message}`, 'error')
+    return {
+      ok: false,
+      confirmed: true,
+      output: `Failed to open ${url}: ${(err as Error).message}`,
+      next: 'Retry, or copy the URL into your browser manually.'
+    }
+  }
 }
 
 export async function openPath(path: string): Promise<boolean> {
@@ -164,7 +195,12 @@ export async function runCommand(command: string): Promise<CommandResult> {
   }
   if (!confirmed) {
     activity.log('automation', `Command blocked: ${cmd.slice(0, 80)}`, 'warn')
-    return { ok: false, confirmed: false, output: 'Blocked — you cancelled the confirmation.' }
+    return {
+      ok: false,
+      confirmed: false,
+      output: 'Blocked — you cancelled the confirmation.',
+      next: 'Re-run to allow this command once, or turn off confirmations in Settings → Automation.'
+    }
   }
   try {
     const out = await runPs(cmd)
@@ -172,6 +208,11 @@ export async function runCommand(command: string): Promise<CommandResult> {
     return { ok: true, confirmed: true, output: out }
   } catch (err) {
     activity.log('automation', `Command failed: ${cmd.slice(0, 80)}`, 'error')
-    return { ok: false, confirmed: true, output: (err as Error).message }
+    return {
+      ok: false,
+      confirmed: true,
+      output: (err as Error).message,
+      next: 'Check the error output for the failing step, then retry or ask the user how to proceed.'
+    }
   }
 }

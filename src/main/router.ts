@@ -135,6 +135,10 @@ function extractUrl(text: string): string {
   return m ? m[0] : ''
 }
 
+function withNext(r: { output: string; next?: string }): string {
+  return r.next ? `${r.output} Next: ${r.next}` : r.output
+}
+
 async function lunaReply(text: string): Promise<RouteResult> {
   const cfg = loadConfig()
   const ok = await ollamaHealth(cfg.ollamaUrl)
@@ -220,11 +224,16 @@ export async function route(text: string): Promise<RouteResult> {
       if (lower.includes('open ') || lower.includes('launch ') || lower.includes('start ')) {
         const app = t.replace(/^(please\s+)?(open|launch|start)\s+/i, '').trim()
         if (task.params.url) {
-          openUrl(task.params.url)
-          return { target: 'windows', ok: true, output: `Opened ${task.params.url}`, providerId: 'windows' }
+          const r = await openUrl(task.params.url)
+          return { target: 'windows', ok: r.ok, output: withNext(r), providerId: 'windows' }
         }
-        if (launchApp(app))
-          return { target: 'windows', ok: true, output: `Launching "${app}"...`, providerId: 'windows' }
+        const r = await launchApp(app)
+        if (r.ok)
+          return { target: 'windows', ok: true, output: r.output, providerId: 'windows' }
+        if (r.next) {
+          activity.log('automation', `launchApp: ${r.output} — Next: ${r.next}`, 'warn')
+          return { target: 'windows', ok: false, output: `${r.output} Next: ${r.next}`, providerId: 'windows' }
+        }
         if (/^[a-z]:[\\/]|^[\\/]{2}/i.test(app)) {
           const okPath = await openPath(app)
           return {
@@ -253,7 +262,7 @@ export async function route(text: string): Promise<RouteResult> {
       }
       if (task.params.command) {
         const r = await runCommand(task.params.command)
-        return { target: 'windows', ok: r.ok, output: r.output, providerId: 'windows' }
+        return { target: 'windows', ok: r.ok, output: withNext(r), providerId: 'windows' }
       }
       return { target: 'windows', ok: true, output: 'Windows control: specify an app to open, a window to focus, or a command.', providerId: 'windows' }
     }

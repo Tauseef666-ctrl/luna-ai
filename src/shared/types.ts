@@ -266,6 +266,7 @@ export interface CommandResult {
   ok: boolean
   confirmed: boolean
   output: string
+  next?: string
 }
 
 export type ActivityLevel = 'info' | 'success' | 'warn' | 'error'
