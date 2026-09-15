@@ -165,6 +165,24 @@ Audit of the shipping v0.4.0 codebase (renderer, main process, config/assets/doc
 
 ---
 
+## 2h. Phase-2 Refactor — core/IPC module split (done 2026-09-15)
+
+Main-process monolith (`index.ts` ~609 lines, ~50 handlers) split into domain modules; **all IPC channel names unchanged** (preload/renderer untouched). Verified: typecheck ✓, build ✓, app boots (smoke run — stays alive) ✓.
+
+- `state.ts` — `AppState` store + `luna:state` broadcast.
+- `ui.ts` — dashboard/float window lifecycle + float helpers (was inline in `index.ts`).
+- `chat.ts` — LUNA chat engine (`runChat`) + current-session holder (moved from `index.ts:312-395`).
+- `permission.ts` — **fixes the broken permission flow (§2g)**: `requestPermission()` now emits `permission:request` and awaits `permission:response`; `permission:resolved` re-broadcast + activity logging kept. Nothing calls it yet — ready for the tools/permissions phase (§13/§24).
+- `handlers-core.ts` — config/scan/assets/projects/activity/sessions/memory/float/character/ai-switch/hotkey.
+- `handlers-ai.ts` — ollama/providers/secrets/shoya/router/context/vscode/research/chat.
+- `voice.ts` — `voice:input`/`voice:audio` + all `tts:*` handlers.
+- `index.ts` — app lifecycle + wiring only.
+- `tts.ts` — gained `speakTo`/`stopTts` (previously inline in `index.ts`).
+
+**Next (§55 order):** Provider System (online adapters beyond Ollama) → Shoya routing → tools/permissions (uses `permission.ts`) → replace fake voice enrollment (`dashboard.ts:1172-1187`) with real STT (blocked on the SAC decision, §1).
+
+---
+
 ## Phase 1 — Foundation & Scaffolding
 
 ### 1.1 Project Setup

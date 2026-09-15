@@ -1,6 +1,12 @@
 import { spawn } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { BrowserWindow } from 'electron'
+import type { WebContents } from 'electron'
+import { loadConfig } from './config'
+import { setState } from './state'
+import { activity } from './activity'
+import type { TtsAudioPayload } from '../shared/types'
 
 export interface TtsSynthResult {
   pcm: Buffer
@@ -116,4 +122,39 @@ export function pcmToWav(pcm: Buffer, sampleRate: number): Buffer {
   buf.writeUInt32LE(dataSize, 40)
   pcm.copy(buf, 44)
   return buf
+}
+
+export function speakTo(target: WebContents | null, text: string, voice: string): void {
+  const c = loadConfig()
+  if (!c.tts.enabled || !text || !voice) return
+  if (!findPiperExe(c.aiRoot)) return
+  stopSpeaking()
+  setState({ char: 'speaking', status: 'Speaking...' })
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) win.webContents.send('tts:started')
+  }
+  synthesize(c.aiRoot, voice, text, { lengthScale: c.tts.lengthScale })
+    .then(({ pcm, sampleRate }) => {
+      const wavBase64 = pcmToWav(pcm, sampleRate).toString('base64')
+      if (target && !target.isDestroyed()) {
+        target.send('tts:audio', { wavBase64, sampleRate } as TtsAudioPayload)
+      } else {
+        setState({ char: 'idle', status: 'Ready to assist...' })
+      }
+    })
+    .catch((err) => {
+      activity.log('tts', `TTS error: ${(err as Error).message}`, 'error')
+      setState({ char: 'idle', status: 'Ready to assist...' })
+      for (const win of BrowserWindow.getAllWindows()) {
+        if (!win.isDestroyed()) win.webContents.send('tts:ended')
+      }
+    })
+}
+
+export function stopTts(): void {
+  stopSpeaking()
+  setState({ char: 'idle', status: 'Ready to assist...' })
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) win.webContents.send('tts:ended')
+  }
 }
