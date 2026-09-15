@@ -11,7 +11,7 @@ Dev workflow: VS Code (native Windows) + Shoya coding agent → Git → GitHub A
 >
 > **Operating model:** see [`agents.md`](agents.md) — two agents (A = core/backend, B = experience/renderer) build to one shared contract (`src/shared/types.ts`). Per-agent plan files (`plan code A`, `plan experence B.txt`) were removed (commit `2a8c01c`); **this `plan.md` is the master running status.**
 >
-> **Latest (2026-09-15):** v0.5.0 prep — env verification: **Piper ✓** (TTS→WAV verified), **Ollama ✓** (0.34.0, serving on 11434, models on D), **Whisper ✗** (SAC — deferred), **Three.js experiment removed** (cleanup done). Repo audit → **§2g**; IPC refactor → **§2h**; **AI Provider System (§4) fully done → §2i**; **Shoya panel + routing state → §2j**.
+> **Latest (2026-09-15):** v0.5.0 prep — env verification: **Piper ✓** (TTS→WAV verified), **Ollama ✓** (0.34.0, serving on 11434, models on D), **Whisper ✗** (SAC — deferred), **Three.js experiment removed** (cleanup done). Repo audit → **§2g**; IPC refactor → **§2h**; **AI Provider System (§4) fully done → §2i**; **Shoya panel + routing state → §2j**; **Tools/permissions (commands via dashboard dialog) → §2k**.
 
 ---
 
@@ -172,7 +172,7 @@ Main-process monolith (`index.ts` ~609 lines, ~50 handlers) split into domain mo
 - `state.ts` — `AppState` store + `luna:state` broadcast.
 - `ui.ts` — dashboard/float window lifecycle + float helpers (was inline in `index.ts`).
 - `chat.ts` — LUNA chat engine (`runChat`) + current-session holder (moved from `index.ts:312-395`).
-- `permission.ts` — **fixes the broken permission flow (§2g)**: `requestPermission()` now emits `permission:request` and awaits `permission:response`; `permission:resolved` re-broadcast + activity logging kept. Nothing calls it yet — ready for the tools/permissions phase (§13/§24).
+- `permission.ts` — **fixes the broken permission flow (§2g)**: `requestPermission()` now emits `permission:request` and awaits `permission:response`; `permission:resolved` re-broadcast + activity logging kept. Now called by `control.ts` `confirmCommand` (§2k).
 - `handlers-core.ts` — config/scan/assets/projects/activity/sessions/memory/float/character/ai-switch/hotkey.
 - `handlers-ai.ts` — ollama/providers/secrets/shoya/router/context/vscode/research/chat.
 - `voice.ts` — `voice:input`/`voice:audio` + all `tts:*` handlers.
@@ -206,6 +206,18 @@ Backend was already complete (spec §4): `src/main/providers.ts` (DPAPI-encrypte
 - **Streaming** (`providers.ts`): `providerChatStream(p, messages, opts, onToken)` added for all four kinds — Ollama NDJSON, Gemini `streamGenerateContent` (SSE), Claude `/v1/messages` SSE, OpenAI-compatible SSE; shared line-reader + `data:` stripping; Ollama branch live-verified against local qwen2.5:1.5b (7 chunks reassembled). Online fallback now streams tokens to `chat:token` like the local path. Typecheck ✓, build ✓, smoke boot ✓.
 
 Provider System (§4) is functionally complete: config defaults ✓, management UI ✓, encrypted keys ✓, test connection ✓, non-streaming + streaming chat ✓, online fallback ✓.
+
+---
+
+## 2k. Tools & permissions — dashboard permission dialog for commands (§13, §24 — done 2026-09-15)
+
+`control.ts` `runCommand` had its own native `dialog.showMessageBox` modal — blocked the main process UI loop and was disconnected from the spec's Experience-rendered confirmation flow (§13: confirm-tier actions presented by the floating/dashboard Experience layer, Core waits for `permission:response`). This increment wired it through the existing `requestPermission` channel (`permission.ts`) while preserving a native-dialog fallback when no renderer windows exist (e.g., background service + start-minimized mode):
+
+- `control.ts`: new `confirmCommand(cmd)` helper — when at least one `BrowserWindow` exists, calls `requestPermission({ action, tier: 'confirm', detail })` and awaits the dashboard/float permission dialog response; otherwise falls back to the native Electron `dialog.showMessageBox`. `runCommand` uses it for any non-safe command (safe list unchanged: `echo`, `dir`, `tasklist`, `ipconfig`, etc., plus chain-character blocking).
+- `permission.ts` `registerPermissionHandler()` was already wired in `index.ts` (§2h refactor); dashboard already renders `#perm-dialog` and responds via `permission:response`; float dialog also wired — no additional UI changes needed.
+- `automation.confirm` config toggle (Settings → Automation, bound at `dashboard.ts:1453`) controls whether non-safe commands go through confirmation at all (honor it before calling `confirmCommand`). Verified: typecheck ✓, build ✓, smoke boot ✓.
+
+**Next:** Upgrade the remaining router-target actions to go through `requestPermission` (e.g., VS Code open, file operations when they land) + action self-verification wrapper (§32.3).
 
 ---
 

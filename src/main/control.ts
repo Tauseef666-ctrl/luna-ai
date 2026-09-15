@@ -1,8 +1,9 @@
-import { dialog, shell } from 'electron'
+import { BrowserWindow, dialog, shell } from 'electron'
 import { execFile, spawn } from 'node:child_process'
 import { promisify } from 'node:util'
 import { loadConfig } from './config'
 import { activity } from './activity'
+import { requestPermission } from './permission'
 import type { CommandResult, WindowInfo } from '../shared/types'
 
 const execFileP = promisify(execFile)
@@ -128,6 +129,28 @@ const SAFE_COMMANDS = [
 // commands onto it (e.g. `whoami; Remove-Item ...` or `type x && del y`).
 const CHAIN_CHARS = ['&&', '||', ';', '|', '>', '<']
 
+async function confirmCommand(cmd: string): Promise<boolean> {
+  const hasWindow = BrowserWindow.getAllWindows().some((w) => !w.isDestroyed())
+  if (hasWindow) {
+    return requestPermission({
+      action: `Run command: ${cmd.slice(0, 60)}`,
+      tier: 'confirm',
+      detail: `Runs in your Windows session with your permissions.\n\n${cmd}`
+    })
+  }
+  const { response } = await dialog.showMessageBox({
+    type: 'warning',
+    buttons: ['Allow once', 'Cancel'],
+    defaultId: 1,
+    cancelId: 1,
+    title: 'LUNA — run command?',
+    message: `Run "${cmd}"?`,
+    detail:
+      'This command is not on the safe list. It will run in your Windows session with your permissions.'
+  })
+  return response === 0
+}
+
 export async function runCommand(command: string): Promise<CommandResult> {
   const cmd = command.trim()
   if (!cmd) return { ok: false, confirmed: true, output: 'Empty command.' }
@@ -137,17 +160,7 @@ export async function runCommand(command: string): Promise<CommandResult> {
   const cfg = loadConfig()
   let confirmed = isSafe
   if (!isSafe && cfg.automation?.confirm !== false) {
-    const { response } = await dialog.showMessageBox({
-      type: 'warning',
-      buttons: ['Allow once', 'Cancel'],
-      defaultId: 1,
-      cancelId: 1,
-      title: 'LUNA — run command?',
-      message: `Run "${cmd}"?`,
-      detail:
-        'This command is not on the safe list. It will run in your Windows session with your permissions.'
-    })
-    confirmed = response === 0
+    confirmed = await confirmCommand(cmd)
   }
   if (!confirmed) {
     activity.log('automation', `Command blocked: ${cmd.slice(0, 80)}`, 'warn')
