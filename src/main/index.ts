@@ -1,5 +1,5 @@
 import { app, globalShortcut, session } from 'electron'
-import { loadConfig } from './config'
+import { loadConfig, saveConfig } from './config'
 import { ensureWorkspace } from './scanner'
 import { memory, sessions } from './memory'
 import { activity } from './activity'
@@ -48,24 +48,26 @@ app.whenReady().then(() => {
   createTray({
     toggleFloat,
     showDashboard: openDashboard,
+    isStartWithWindows: () => app.getLoginItemSettings().openAtLogin,
+    setStartWithWindows: (enabled) => {
+      app.setLoginItemSettings({ openAtLogin: enabled, openAsHidden: cfg.background.startMinimized })
+      const c = loadConfig()
+      c.background.startWithWindows = enabled
+      saveConfig(c)
+      activity.log('background', `Start with Windows ${enabled ? 'enabled' : 'disabled'}`)
+    },
     quit: () => app.quit()
   })
 
-  const hotkey = cfg.background.hotkey
-  if (hotkey) {
-    const registered = globalShortcut.register(hotkey, () => {
-      activity.log('hotkey', `Push-to-talk hotkey: ${hotkey}`)
-      toggleFloat()
-    })
-    if (registered) activity.log('app', `Push-to-talk hotkey active: ${hotkey}`)
-    else activity.log('app', `Hotkey registration failed: ${hotkey}`, 'warn')
+  // §10/§25 background service: with "start minimized", run tray-only (no
+  // dashboard/float window) until summoned by hotkey/tray — zero rig rendering.
+  if (cfg.background.startMinimized) {
+    activity.log('app', 'Background start — tray only, dashboard closed until summoned')
+  } else {
+    openDashboard()
   }
-
-  openDashboard()
   void refreshOllama()
   setInterval(refreshOllama, 15000)
-
-  if (cfg.background.startMinimized) hideDashboard()
 })
 
 app.on('window-all-closed', () => {

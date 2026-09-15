@@ -11,7 +11,7 @@ Dev workflow: VS Code (native Windows) + Shoya coding agent → Git → GitHub A
 >
 > **Operating model:** see [`agents.md`](agents.md) — two agents (A = core/backend, B = experience/renderer) build to one shared contract (`src/shared/types.ts`). Per-agent plan files (`plan code A`, `plan experence B.txt`) were removed (commit `2a8c01c`); **this `plan.md` is the master running status.**
 >
-> **Latest (2026-09-15):** v0.5.0 prep — env verification: **Piper ✓** (TTS→WAV verified), **Ollama ✓** (0.34.0, serving on 11434, models on D), **Whisper ✗** (SAC — deferred), **Three.js experiment removed** (cleanup done). Repo audit → **§2g**; IPC refactor → **§2h**; **AI Provider System (§4) fully done → §2i**; **Shoya panel + routing state → §2j**; **Tools/permissions → §2k**; **Action self-verification (§32.3) → §2l**.
+> **Latest (2026-09-15):** v0.5.0 prep — env verification: **Piper ✓** (TTS→WAV verified), **Ollama ✓** (0.34.0, serving on 11434, models on D), **Whisper ✗** (SAC — deferred), **Three.js experiment removed** (cleanup done). Repo audit → **§2g**; IPC refactor → **§2h**; **AI Provider System (§4) → §2i**; **Shoya panel + routing → §2j**; **Tools/permissions → §2k**; **Action self-verification (§32.3) → §2l**; **Background service tray-only start + Win-start toggle (§10/§25) → §2m**. Overall scope ≈ **65%** (97 plan items done; big remaining: rigged 2D live rig, STT [deferred], true transparency, §32.1/32.2/32.4/32.6/32.7, orchestration).
 
 ---
 
@@ -132,7 +132,7 @@ User feedback: "drop the 3D model / it looks heavy — show both characters side
 
 Aligning the shipped v0.4.0 to the v2 spec (`luna-spec.md`). Work items (v0.5.0). Env groundwork verified 2026-09-15: **Piper ✓ / Ollama ✓ / Three.js experiment removed / Whisper ✗ (SAC, deferred)**; repo audit done → **§2g**.
 - [ ] **True transparent floating window** (§2.3) — `transparent: true` frameless window, no visible panel/box behind the character, only character + subtitle/status bar over the desktop
-- [ ] **Background service (§10)** — tray-resident main process (no window on start), "Start with Windows" opt-in, push-to-talk global hotkey summons the floating window without opening the dashboard, lightweight idle (no rig rendering)
+- [x] **Background service (§10)** — tray-resident main process (**tray-only start when "start minimized"** — no window created, zero rig rendering), "Start with Windows" opt-in (**live tray checkbox**, §2m), push-to-talk global hotkey summons the floating window without opening the dashboard, lightweight idle (no rig rendering, 15s Ollama health probe)
 - [x] **AI Provider System (§4)** — config defaults + management UI (**§2i**), encrypted keys (DPAPI), per-provider settings + Test Connection, non-streaming + **streaming** chat, online fallback when Ollama offline
 - [ ] **Shoya = persona routing (§1, §16)** — auto-detect Shoya backends (OpenCode CLI on PATH / known dirs / VS Code extension), per-task routing, "Open Shoya for this project and continue"
 - [ ] **2D rig pipeline (§2.2)** — Live2D (`.moc3`) or Rive (`.riv`) rig produced from img1/img2 (dev-time tooling by Shoya, removed after export) → rendered on WebGL canvas in Electron; interim: current CSS-motion characters remain until rig files exist
@@ -232,6 +232,17 @@ Spec §32.3: **never report success without checking the result actually happene
 - **Live-verified** the real module in Node: `calc.exe` → "started (still running after 800ms)" `ok:true`; a non-existent exe → "failed to start: … ENOENT" `ok:false`. Typecheck ✓, build ✓, smoke boot ✓.
 
 **Remaining self-verification surface:** file writes/deletes and future skill/browser actions should reuse `fileExists`/`exitCodeCheck` as they land (§32.6/§32.7); Shoya already verifies via execFile exit codes + provider errors.
+
+---
+
+## 2m. Background service — tray-only start + Start-with-Windows toggle (§10, §25 — done 2026-09-15)
+
+Tray + hotkey + "keep running with no windows" already existed; this increment closes the §10 gap of a **true headless background start** and adds a live §25 tray control:
+
+- `index.ts`: with `background.startMinimized` the app now starts **tray-only** — no dashboard window is created (previously it was created then hidden), zero rig rendering until summoned by tray/hotkey; `.dashboard()` only opens when not minimized. Hotkey (`background.hotkey`) summons the float window without the dashboard, as spec requires.
+- `tray.ts`: replaced the disabled "Pause Listening" placeholder with a working **Start with Windows** checkbox toggle (reads `getLoginItemSettings().openAtLogin`, persists via config `background.startWithWindows`, reapplies `setLoginItemSettings` with `openAsHidden`).
+- `index.ts`: `setLoginItemSettings` uses `openAsHidden: startMinimized` so background starts stay hidden at login.
+- Verified: typecheck ✓, build ✓, smoke boot ✓ (default start → dashboard opens as before).
 
 ---
 

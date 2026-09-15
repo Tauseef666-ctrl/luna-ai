@@ -4,6 +4,8 @@ import { join } from 'node:path'
 export interface TrayHandlers {
   toggleFloat: () => void
   showDashboard: () => void
+  isStartWithWindows: () => boolean
+  setStartWithWindows: (enabled: boolean) => void
   quit: () => void
 }
 
@@ -19,15 +21,20 @@ export function createTray(handlers: TrayHandlers): Tray {
 
   const tray = new Tray(image)
   tray.setToolTip('LUNA — AI Companion')
-  tray.setContextMenu(
-    Menu.buildFromTemplate([
-      { label: 'Open Assistant', click: handlers.toggleFloat },
-      { label: 'Open Dashboard', click: handlers.showDashboard },
-      { type: 'separator' },
-      { label: 'Pause Listening', enabled: false },
-      { label: 'Quit', click: handlers.quit }
-    ])
-  )
+  const menu = Menu.buildFromTemplate([
+    { label: 'Open Assistant', click: handlers.toggleFloat },
+    { label: 'Open Dashboard', click: handlers.showDashboard },
+    { type: 'separator' },
+    {
+      label: 'Start with Windows',
+      type: 'checkbox',
+      checked: handlers.isStartWithWindows(),
+      click: (item) => handlers.setStartWithWindows(item.checked)
+    },
+    { type: 'separator' },
+    { label: 'Quit', click: handlers.quit }
+  ])
+  tray.setContextMenu(menu)
   tray.on('double-click', handlers.toggleFloat)
   return tray
 }
