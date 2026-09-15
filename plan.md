@@ -8,6 +8,10 @@ Dev workflow: VS Code (native Windows) + Shoya coding agent → Git → GitHub A
 > Check a box only when the item is **done and verified working** in the running app.
 >
 > **v2 spec delta (read `luna-spec.md` first):** rigged 2D characters (Live2D/Rive, from img1/img2 art), **true floating-window transparency**, **always-on background service + wake word (tray-resident)**, AI Provider System (Gemini/Claude/OpenAI-compat/Ollama, Windows Credential Manager), Shoya = persona routing to OpenCode CLI + providers, full §32 in scope (proactive routines, reminders, calendar/email/clipboard, action self-verification, speaker recognition, digest, plugin/skills, browser automation, multi-agent orchestration).
+>
+> **Operating model:** see [`agents.md`](agents.md) — two agents (A = core/backend, B = experience/renderer) build to one shared contract (`src/shared/types.ts`). Per-agent plan files (`plan code A`, `plan experence B.txt`) were removed (commit `2a8c01c`); **this `plan.md` is the master running status.**
+>
+> **Latest (2026-09-15):** v0.5.0 prep — env verification: **Piper ✓** (TTS→WAV verified), **Ollama ✓** (0.34.0, serving on 11434, models on D), **Whisper ✗** (Smart App Control blocks `whisper-cli.exe` — decision needed), **Three.js ✓** (dep smoke test only — superseded experiment, see §1 blockers). Phase-1 repo audit (§55) complete → findings in **§2g**.
 
 ---
 
@@ -16,7 +20,7 @@ Dev workflow: VS Code (native Windows) + Shoya coding agent → Git → GitHub A
 | # | Decision | Status |
 |---|---|---|
 | 32.1 | **Rigged 2D characters** (VTuber-style): Live2D Cubism preferred, **Rive** acceptable lighter-weight fallback — built from `reference\img1_nishimiya.png` (LUNA) + `img2_shoya.png` (Shoya). Runtime plays finished rig (`.moc3`/`.riv`) in `D:\own-ai\characters\`; rigging/segmentation tools are dev-time-only. **No 3D, no Babylon/Three, no procedural model generation.** | Interim CSS-motion rig in; Live2D/Rive pipeline pending |
-| 32.2 | **Local inference = Ollama local REST API** (`http://localhost:11434`). Client module implemented. No raw GGUF / `node-llama-cpp` path. | Client done (incl. streaming); Ollama install in progress |
+| 32.2 | **Local inference = Ollama local REST API** (`http://localhost:11434`). Client module implemented. No raw GGUF / `node-llama-cpp` path. | Client done; **Ollama 0.34.0 installed, serving on 11434, models verified on D** |
 | 32.3 | **Background service always running** (tray-resident, "Start with Windows" opt-in). Push-to-talk is the default trigger; "Hey Luna" wake word = stretch via Picovoice Porcupine. Floating window must appear on wake/hotkey without opening the dashboard. | Architecture pending (v2 §10) |
 | 32.4 | **Renderer: Live2D Cubism SDK for Web or Rive** on a WebGL/Canvas layer in Electron for the 2D character. | Pipeline pending |
 | 32.5 | **GitHub repository** — recorded in plan; wired into the release workflow. | Done (repo URL known) |
@@ -26,8 +30,8 @@ Dev workflow: VS Code (native Windows) + Shoya coding agent → Git → GitHub A
 ## 1. Inventory — What Already Exists in `D:\own-ai\`
 
 ### AI / Model Assets (usable now)
-- [x] Ollama model library (blobs + manifests): `qwen2.5:1.5b`, `qwen2.5:3b`, `qwen2.5:7b`, `qwen2.5vl:3b`, `nomic-embed-text` — `D:\own-ai\models\ollama\`
-- [x] STT (faster-whisper): `base`, `base.en`, `small` — `D:\own-ai\models\whisper\`
+- [x] **Ollama 0.34.0 installed** — models `qwen2.5:1.5b` + `qwen2.5:3b` pulled and verified on `D:\own-ai\models\ollama\` (blobs 2,780.9 MB; `OLLAMA_MODELS` set); server verified serving on `127.0.0.1:11434` (both models respond)
+- [x] STT (faster-whisper): `base`, `base.en`, `small` model files — `D:\own-ai\models\whisper\`; **runtime blocked on this machine by Smart App Control** (§4.1, decision needed)
 - [x] TTS (Piper ONNX voices): `en_US-amy` (F), `en_US-ryan` (M), `hi_IN-priyamvada` (F), `hi_IN-rohan` (M), `ur_PK-aegis_female` (F), `ur_PK-fasih` (M)
 - [x] Wake-word ONNX models: `hey_jarvis_*.onnx` — **NOT reused** (§32.3)
 - [x] Reference concept art moved to `D:\own-ai\reference\` with spec names (§2.3): `img1_nishimiya.png`, `img2_shoya.png`, `img3_nishimiya_full.png`, `img4_shoya_full.png` — **look reference only, never runtime assets**
@@ -39,8 +43,10 @@ Dev workflow: VS Code (native Windows) + Shoya coding agent → Git → GitHub A
 - [x] Reference images renamed/moved to `reference\` matching spec §2.3 table
 
 ### Remaining Blockers
-- [ ] **Ollama CLI not installed on this machine** — models are present as blob library; install Ollama and set `OLLAMA_MODELS=D:\own-ai\models\ollama` to go online (app client is ready)
+- [x] **Ollama CLI installed** (0.34.0) — `OLLAMA_MODELS=D:\own-ai\models\ollama` set; blobs recognized on D with no re-pull (verified serving + both models respond)
 - [~] **3D character/animation files** — **resolved by the v0.4.0 2D pivot**: characters are the concept art themselves, animated by CSS; no 3D files needed
+- [ ] **Whisper STT blocked on this machine** — x64 `whisper-cli.exe` blocked by **Smart App Control** (CodeIntegrity 3118); 32-bit builds exit `0xC0000135` (DLL-not-found, root cause unresolved). Options: disable SAC (user decision), ship the allowed x64 `whisper-command` build, or alternate STT. Blocks §4.1 + the v1 voice loop.
+- [ ] **Uncommitted Three.js experiment** — from an earlier 3D-avatar direction (superseded by the 2D pivot): `three@0.186.0` + `@types/three` added to `package.json` (`three` ships no `.d.ts`), `src/avatar/types.ts` authored and typechecks. Clean up on confirm.
 
 ---
 
@@ -124,7 +130,7 @@ User feedback: "drop the 3D model / it looks heavy — show both characters side
 
 ## 2f. Build Status — v2 spec alignment (in progress, uncommitted)
 
-Aligning the shipped v0.4.0 to the v2 spec (`luna-spec.md`). Work items (v0.5.0):
+Aligning the shipped v0.4.0 to the v2 spec (`luna-spec.md`). Work items (v0.5.0). Env groundwork verified 2026-09-15: **Piper ✓ / Ollama ✓ / Three.js (experiment only) ✓ / Whisper ✗ (SAC)**; repo audit done → **§2g**.
 - [ ] **True transparent floating window** (§2.3) — `transparent: true` frameless window, no visible panel/box behind the character, only character + subtitle/status bar over the desktop
 - [ ] **Background service (§10)** — tray-resident main process (no window on start), "Start with Windows" opt-in, push-to-talk global hotkey summons the floating window without opening the dashboard, lightweight idle (no rig rendering)
 - [ ] **AI Provider System (§4)** — unified providers: Ollama (local) + Google Gemini + Anthropic Claude + OpenAI-compatible; API keys in Windows Credential Manager (no hardcoded keys); Settings per-provider (Base URL, Model, Temperature, Max Tokens, System Prompt, Timeout) + Test Connection (Connected/Disconnected/Invalid Key/Rate Limited/Offline/Model Unavailable)
@@ -134,6 +140,28 @@ Aligning the shipped v0.4.0 to the v2 spec (`luna-spec.md`). Work items (v0.5.0)
 - [ ] **Plugin/Skill system (§32.6)** — `skills/<name>/manifest.json` registry, permission tiers, Skills manager in Settings→Automation
 - [ ] **Proactive routines + reminders (§32.1)** — time-based routines, one-off/recurring reminders fired by the background service, quiet hours
 - [ ] **Calendar/Email/Clipboard (§32.2)** + **Notification digest (§32.5)** + **Browser automation (§32.7)** + **Orchestration (§32.8)** — scoped after core items
+
+---
+
+## 2g. Phase-1 Repo Audit — v0.4.0 vs v2 spec (§55, done 2026-09-15)
+
+Audit of the shipping v0.4.0 codebase (renderer, main process, config/assets/docs) against the v2 spec.
+
+**Works today (verified in code):** streaming chat + long-context summary; memory store + sessions + pin/export; projects CRUD + active-project notes injection; settings bindings (temp / max tokens / system prompt); push-to-talk + mic activation UI; TTS playback + analyser-driven lip-sync; 2D CSS characters (dashboard + floating window); asset scan + rescan; config store; system tray; activity log; `assets:image`/`assets:binary` IPC; mock-bridge browser preview; NSIS + CI release workflow.
+
+**Broken / non-functional (needs fix):**
+- Voice enrollment is **fake** (`dashboard.ts:1172-1187`) — no mic record/STT; needs replacement with real circulation.
+- Permission confirmation is **unreachable** — nothing emits `permission:request` (only `permission:response` logged, `index.ts:481-490`); the Confirm/Deny dialog can never trigger. Fix before any action-capable tool ships.
+- No actual STT in the voice pipeline (`stt.ts` present, but whisper blocked on this machine — §4.1).
+
+**Missing for the v2 spec:**
+- Monoliths to refactor: `dashboard.ts` (~1,503 lines) and `index.ts` (~609 lines, ~50 IPC handlers).
+- Provider System beyond Ollama; online providers; Shoya backend routing (OpenCode CLI + provider fallback); plugin/skill system — none implemented.
+- Tool execution + permission tiers, task/orchestration system, structured logging — none implemented.
+- Background service + true floating-window transparency + wake word (§10, §32.3) — tray exists, rest pending.
+- 2D rig (Live2D/Rive) + true viseme lip-sync + gesture library (§2.2) — CSS rig is interim.
+
+**Order for next phase (§55 workflow):** refactor Core/AI/Memory/Voice boundaries first while preserving working v0.4.0 surfaces → implement Provider System → Shoya routing → tools/permissions → replace fake enrollment with real STT.
 
 ---
 
@@ -168,7 +196,7 @@ Aligning the shipped v0.4.0 to the v2 spec (`luna-spec.md`). Work items (v0.5.0)
 - [x] **Streaming responses** (`ollamaChatStream`, SSE) into chat UI with live token updates
 - [x] Task→model routing stub (chat uses LUNA-assigned model → qwen2.5:7b → qwen2.5 → first model)
 - [x] Auto-fallback chain + graceful offline message
-- [ ] Install Ollama for Windows with `OLLAMA_MODELS=D:\own-ai\models\ollama` (verify blobs picked up without re-pull)
+- [x] Install Ollama for Windows (0.34.0) with `OLLAMA_MODELS=D:\own-ai\models\ollama` — **verified**: blobs picked up on D with no re-pull; qwen2.5:1.5b + qwen2.5:3b respond
 - [ ] Model load/unload on demand (§31)
 - [ ] Task router expansion: coding (qwen2.5 larger), vision (qwen2.5vl), embed (nomic-embed-text)
 
@@ -227,17 +255,17 @@ Aligning the shipped v0.4.0 to the v2 spec (`luna-spec.md`). Work items (v0.5.0)
 ## Phase 4 — Voice & Speech (§9–§12)
 
 ### 4.1 STT / Wake Word (§32.3)
-- [ ] **Push-to-talk** (spacebar/button) — v1 primary input
+- [x] **Push-to-talk** (spacebar/button) — mic activation UI wired (v0.4.0); actual STT ingestion pending
 - [ ] Always-listening option, sensitivity, microphone selection (§10)
-- [ ] faster-whisper STT integration (base → small)
+- [~] faster-whisper STT integration (base → small) — engine code present (`stt.ts`); **runtime blocked by Smart App Control** (decision needed, §1 blockers)
 - [ ] Language auto-detect + explicit: English, Hindi, Urdu, Hinglish (§11)
 - [ ] **Barge-in** — duck/stop TTS on user speech; "Stop" halts instantly (§12)
 - [ ] **Stretch:** "Hey Luna" via Picovoice Porcupine console (§32.3)
 
 ### 4.2 TTS
-- [ ] Piper engine with local voices: LUNA female (amy/priyamvada/aegis), Shoya male (ryan/rohan/fasih)
-- [ ] Language-aware voice selection (en/hi/ur)
-- [ ] Viseme/phoneme output for lip-sync + waveform UI
+- [x] Piper engine **verified** — full runtime present (`D:\own-ai\models\piper\bin\piper`, DLL set complete); amy + ryan load and synthesize text→WAV (2026-09-15)
+- [~] Language-aware voice selection (en/hi/ur) — voice assignment UI exists; language-driven switching pending
+- [~] Viseme/phoneme output for lip-sync — analyser-driven waveform sync works; true viseme stream pending
 
 ### 4.3 Voice Command Integration (§9)
 - [ ] Window commands: move, resize, corner-pin, transparent, always-on-top
@@ -263,7 +291,7 @@ Aligning the shipped v0.4.0 to the v2 spec (`luna-spec.md`). Work items (v0.5.0)
 - [x] Dashboard shell with 9-view navigation (v0.1.0)
 - [ ] Project Manager (§21) — data model + UI
 - [ ] AI Dashboard (§22) — dual status cards
-- [ ] Chat UI streaming + character-colored bubbles (partial: non-streaming chat works)
+- [x] Chat UI streaming + character-colored bubbles (v0.2.0 streaming, 2D characters in v0.4.0)
 - [ ] Settings (§23): General, AI, Voice, **Character**, Memory, Automation, Paths (partial: asset manager)
 - [ ] System tray full menu (§25): Pause/Enable Listening, Switch AI, Memory, Projects
 - [ ] Global commands (§26)
@@ -316,6 +344,8 @@ Aligning the shipped v0.4.0 to the v2 spec (`luna-spec.md`). Work items (v0.5.0)
 
 ## Open Questions / Decisions Needed
 
-- [ ] **Ollama install**: OK to install Ollama for Windows on this machine (`OLLAMA_MODELS=D:\own-ai\models\ollama`)? Needed to bring the app online locally.
-- [ ] **Character art direction**: confirm LUNA = `img1_nishimiya.png` and Shoya = `img2_shoya.png` as their live visuals (currently the app's default). Optional: user-supplied 2D sprite sheets later for richer motion.
-- [ ] Confirm the reference-image rename to spec names is acceptable (`img1_nishimiya.png`, `img2_shoya.png`, `img3_nishimiya_full.png`, `img4_shoya_full.png`).
+- [x] **Ollama install**: done (0.34.0) — `OLLAMA_MODELS=D:\own-ai\models\ollama`, models verified on D.
+- [x] **Character art direction**: LUNA = `img1_nishimiya.png`, Shoya = `img2_shoya.png` as live visuals (in the app default since v0.4.0). Optional: user-supplied 2D sprite sheets later.
+- [x] Reference-image rename to spec names accepted.
+- [ ] **Smart App Control**: OK to **disable SAC** (Windows Security → App & browser control) to unblock `whisper-cli.exe` for local STT? (also renders the 32-bit DLL research moot). Alternatives: ship the x64 `whisper-command` build that IS allowed, or a custom STT build. **Blocks §4.1 + the v1 voice loop.**
+- [ ] **Clean up Three.js experiment**: remove `three`/`@types/three` deps + `src/avatar/` (superseded 3D direction)? Recommended yes to keep the repo aligned to the 2D pivot.
