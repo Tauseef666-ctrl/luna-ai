@@ -209,6 +209,211 @@ export async function providerChat(
   }
 }
 
+export async function providerChatStream(
+  p: ProviderConfig,
+  messages: ProviderChatMessage[],
+  opts: ProviderChatOptions,
+  onToken: (chunk: string) => void
+): Promise<string> {
+  switch (p.kind) {
+    case 'ollama':
+      return streamOllama(p, messages, opts, onToken)
+    case 'gemini':
+      return streamGemini(p, messages, opts, onToken)
+    case 'claude':
+      return streamClaude(p, messages, opts, onToken)
+    case 'openai':
+      return streamOpenAI(p, messages, opts, onToken)
+    default:
+      throw new Error(`Unsupported provider kind: ${p.kind}`)
+  }
+}
+
+async function streamLines(res: Response, onLine: (line: string) => void): Promise<void> {
+  const reader = res.body?.getReader()
+  if (!reader) throw new Error('No response body')
+  const decoder = new TextDecoder()
+  let buf = ''
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buf += decoder.decode(value, { stream: true })
+    let idx: number
+    while ((idx = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, idx).replace(/\r$/, '')
+      buf = buf.slice(idx + 1)
+      if (line.trim()) onLine(line)
+    }
+  }
+  if (buf.trim()) onLine(buf)
+}
+
+function stripData(line: string): string {
+  const s = line.trim()
+  return s.startsWith('data:') ? s.slice(5).trim() : s
+}
+
+async function streamOllama(
+  p: ProviderConfig,
+  messages: ProviderChatMessage[],
+  opts: ProviderChatOptions,
+  onToken: (chunk: string) => void
+): Promise<string> {
+  const base = p.baseUrl ?? 'http://localhost:11434'
+  const body: Record<string, unknown> = { model: p.model, messages, stream: true }
+  const options: Record<string, unknown> = {}
+  if (opts.temperature !== undefined) options.temperature = opts.temperature
+  if (opts.maxTokens !== undefined) options.num_predict = opts.maxTokens
+  if (Object.keys(options).length) body.options = options
+  const res = await fetch(`${base}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(120000)
+  })
+  if (!res.ok) throw new Error(`Ollama error ${res.status}`)
+  let out = ''
+  await streamLines(res, (line) => {
+    try {
+      const d = JSON.parse(line) as { message?: { content?: string } }
+      const t = d.message?.content ?? ''
+      if (t) {
+        out += t
+        onToken(t)
+      }
+    } catch {
+      // ignore any non-JSON keep-alive lines
+    }
+  })
+  if (!out) throw new Error('Empty response from Ollama')
+  return out
+}
+
+async function streamGemini(
+  p: ProviderConfig,
+  messages: ProviderChatMessage[],
+  opts: ProviderChatOptions,
+  onToken: (chunk: string) => void
+): Promise<string> {
+  const key = apiKeyFor(p)
+  if (!key) throw new Error('API key not set')
+  const base = p.baseUrl ?? 'https://generativelanguage.googleapis.com'
+  const model = p.model || 'gemini-2.0-flash'
+  const contents = messages
+    .filter((m) => m.role !== 'system')
+    .map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }))
+  const body: Record<string, unknown> = { contents }
+  if (opts.temperature !== undefined) body.generationConfig = { temperature: opts.temperature }
+  const url = `${base}/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${encodeURIComponent(key)}`
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(120000)
+  })
+  if (!res.ok) throw new Error(`Gemini error ${res.status}`)
+  let out = ''
+  await streamLines(res, (line) => {
+    const s = stripData(line)
+    if (!s || s === '[DONE]') return
+    try {
+      const d = JSON.parse(s) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> }
+      const t = d.candidates?.[0]?.content?.parts?.map((p2) => p2.text ?? '').join('') ?? ''
+      if (t) {
+        out += t
+        onToken(t)
+      }
+    } catch {
+      // ignore keep-alive / partial lines
+    }
+  })
+  if (!out) throw new Error('Empty response from Gemini')
+  return out
+}
+
+async function streamClaude(
+  p: ProviderConfig,
+  messages: ProviderChatMessage[],
+  opts: ProviderChatOptions,
+  onToken: (chunk: string) => void
+): Promise<string> {
+  const key = apiKeyFor(p)
+  if (!key) throw new Error('API key not set')
+  const base = p.baseUrl ?? 'https://api.anthropic.com'
+  const model = p.model || 'claude-sonnet-4-20250514'
+  const system = messages.filter((m) => m.role === 'system').map((m) => m.content).join('\n') || undefined
+  const convo = messages.filter((m) => m.role !== 'system')
+  const body: Record<string, unknown> = { model, max_tokens: opts.maxTokens ?? 4096, messages: convo, stream: true }
+  if (system) body.system = system
+  if (opts.temperature !== undefined) body.temperature = opts.temperature
+  const res = await fetch(`${base}/v1/messages`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(120000)
+  })
+  if (!res.ok) throw new Error(`Claude error ${res.status}`)
+  let out = ''
+  await streamLines(res, (line) => {
+    const s = stripData(line)
+    if (!s || s === '[DONE]') return
+    try {
+      const d = JSON.parse(s) as { type?: string; delta?: { type?: string; text?: string } }
+      if (d.type === 'content_block_delta' && d.delta?.text) {
+        out += d.delta.text
+        onToken(d.delta.text)
+      }
+    } catch {
+      // ignore keep-alive / event lines
+    }
+  })
+  if (!out) throw new Error('Empty response from Claude')
+  return out
+}
+
+async function streamOpenAI(
+  p: ProviderConfig,
+  messages: ProviderChatMessage[],
+  opts: ProviderChatOptions,
+  onToken: (chunk: string) => void
+): Promise<string> {
+  const key = apiKeyFor(p)
+  if (!key) throw new Error('API key not set')
+  const base = p.baseUrl ?? 'https://api.openai.com/v1'
+  const model = p.model || 'gpt-4o-mini'
+  const body: Record<string, unknown> = { model, messages, stream: true }
+  if (opts.temperature !== undefined) body.temperature = opts.temperature
+  if (opts.maxTokens !== undefined) body.max_tokens = opts.maxTokens
+  const res = await fetch(`${base}/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(120000)
+  })
+  if (!res.ok) throw new Error(`OpenAI-compatible error ${res.status}`)
+  let out = ''
+  await streamLines(res, (line) => {
+    const s = stripData(line)
+    if (!s || s === '[DONE]') return
+    try {
+      const d = JSON.parse(s) as { choices?: Array<{ delta?: { content?: string } }> }
+      const t = d.choices?.[0]?.delta?.content ?? ''
+      if (t) {
+        out += t
+        onToken(t)
+      }
+    } catch {
+      // ignore keep-alive lines
+    }
+  })
+  if (!out) throw new Error('Empty response')
+  return out
+}
+
 async function chatOllama(p: ProviderConfig, messages: ProviderChatMessage[], opts: ProviderChatOptions): Promise<string> {
   const base = p.baseUrl ?? 'http://localhost:11434'
   const body: Record<string, unknown> = { model: p.model, messages, stream: false }

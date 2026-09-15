@@ -133,7 +133,7 @@ User feedback: "drop the 3D model / it looks heavy — show both characters side
 Aligning the shipped v0.4.0 to the v2 spec (`luna-spec.md`). Work items (v0.5.0). Env groundwork verified 2026-09-15: **Piper ✓ / Ollama ✓ / Three.js (experiment only) ✓ / Whisper ✗ (SAC)**; repo audit done → **§2g**.
 - [ ] **True transparent floating window** (§2.3) — `transparent: true` frameless window, no visible panel/box behind the character, only character + subtitle/status bar over the desktop
 - [ ] **Background service (§10)** — tray-resident main process (no window on start), "Start with Windows" opt-in, push-to-talk global hotkey summons the floating window without opening the dashboard, lightweight idle (no rig rendering)
-- [~] **AI Provider System (§4)** — backend + secrets (DPAPI) + per-provider settings/Test Connection done (**§2i**); streaming for online providers + routing integration pending → **§2i**
+- [x] **AI Provider System (§4)** — config defaults + management UI (**§2i**), encrypted keys (DPAPI), per-provider settings + Test Connection, non-streaming + **streaming** chat, online fallback when Ollama offline
 - [ ] **Shoya = persona routing (§1, §16)** — auto-detect Shoya backends (OpenCode CLI on PATH / known dirs / VS Code extension), per-task routing, "Open Shoya for this project and continue"
 - [ ] **2D rig pipeline (§2.2)** — Live2D (`.moc3`) or Rive (`.riv`) rig produced from img1/img2 (dev-time tooling by Shoya, removed after export) → rendered on WebGL canvas in Electron; interim: current CSS-motion characters remain until rig files exist
 - [ ] **Action self-verification (§32.3)** — verify results (file exists / exit code) before reporting success
@@ -190,9 +190,10 @@ Backend was already complete (spec §4): `src/main/providers.ts` (DPAPI-encrypte
 - `config.ts` DEFAULTS: gemini/claude/openai entries added (disabled, `baseUrl`+`model` defaults, deterministic `apiKeyRef: provider.<kind>`, priority 1-3 after ollama) — deepMerge preserves them under existing user configs.
 - `view-ai` (AI Models) now renders `renderProviders()`: per-provider cards (status badge, base URL/model fields, enabled toggle, priority, plaintext-off API key save/clear via `secret:*`, **Test connection** via `providers:test` with live status + latency + model list, Remove) + "Add …" buttons for missing kinds. Local model list `#ai-list` + `#ollama-url` stay in `view-ai`; **duplicate `#ai-list` id removed from `set-ai`** (§2g pre-existing bug).
 - `mock-bridge.ts` SAMPLE_CONFIG providers expanded to match real defaults (design-preview parity).
-- **Chat online fallback** (`chat.ts`): `runChat` no longer dead-ends when Ollama is offline — it falls back to the first enabled non-Ollama provider (`providerChat`, non-streaming) with full memory + project context, echoing `Thinking (online)...` and marking `activeModel` as the provider label. Router fallback was already wired the same way (§§ 2i/22). Verified: typecheck ✓, build ✓, smoke boot ✓.
+- **Chat online fallback** (`chat.ts`): `runChat` no longer dead-ends when Ollama is offline — it falls back to the first enabled non-Ollama provider with full memory + project context, echoing `Thinking (online)...` and marking `activeModel` as the provider label. Router fallback was already wired the same way (§§ 2i/22). Verified: typecheck ✓, build ✓, smoke boot ✓.
+- **Streaming** (`providers.ts`): `providerChatStream(p, messages, opts, onToken)` added for all four kinds — Ollama NDJSON, Gemini `streamGenerateContent` (SSE), Claude `/v1/messages` SSE, OpenAI-compatible SSE; shared line-reader + `data:` stripping; Ollama branch live-verified against local qwen2.5:1.5b (7 chunks reassembled). Online fallback now streams tokens to `chat:token` like the local path. Typecheck ✓, build ✓, smoke boot ✓.
 
-**Next:** streaming for online providers (`providerChat` currently non-streaming) — full-stream token pushes to `chat:token` like the Ollama path.
+Provider System (§4) is functionally complete: config defaults ✓, management UI ✓, encrypted keys ✓, test connection ✓, non-streaming + streaming chat ✓, online fallback ✓.
 
 ---
 

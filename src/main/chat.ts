@@ -1,7 +1,7 @@
 import type { WebContents } from 'electron'
 import type { ChatMessage } from './ollama'
 import { ollamaChat, ollamaChatStream, ollamaHealth, listOllamaModels } from './ollama'
-import { enabledProviders, providerChat } from './providers'
+import { enabledProviders, providerChatStream } from './providers'
 import { memory, sessions } from './memory'
 import { activity } from './activity'
 import { loadConfig } from './config'
@@ -134,10 +134,14 @@ async function onlineFallback(target: WebContents | null, text: string): Promise
   setState({ char: 'thinking', status: 'Thinking (online)...', activeModel: p.label })
   activity.log('chat', `Message to online provider ${p.id} (session ${currentSessionId.slice(0, 8)})`)
   try {
-    const reply = await providerChat(p, history, {
-      temperature: c.chat.temperature,
-      maxTokens: c.chat.maxTokens
-    })
+    const reply = await providerChatStream(
+      p,
+      history,
+      { temperature: c.chat.temperature, maxTokens: c.chat.maxTokens },
+      (chunk) => {
+        if (target && !target.isDestroyed()) target.send('chat:token', chunk)
+      }
+    )
     if (session) sessions.appendTurn(currentSessionId, 'assistant', reply)
     setState({ char: 'idle', status: 'Ready to assist...', activeModel: p.label })
     speakTo(target, reply, c.character.luna.speaking)
