@@ -70,8 +70,13 @@ export function registerAiHandlers(): void {
     return ok
   })
 
-  ipcMain.handle('shoya:detect', () => {
-    return detectOpenCode()
+  ipcMain.handle('shoya:detect', async () => {
+    const detection = await detectOpenCode()
+    const hasOnline = Object.values(loadConfig().providers).some(
+      (p): boolean => Boolean(p) && p.enabled && p.kind !== 'ollama'
+    )
+    setState({ shoya: detection.found || hasOnline ? 'online' : 'offline' })
+    return detection
   })
   ipcMain.handle('shoya:run', async (_e, prompt: string, projectDir?: string): Promise<ShoyaRunResult> => {
     if (!prompt || !prompt.trim())
@@ -89,7 +94,8 @@ export function registerAiHandlers(): void {
       const result = await runShoya(prompt, { projectDir })
       setState({
         char: result.ok ? 'success' : 'error',
-        status: result.ok ? 'Shoya finished' : 'Shoya failed'
+        status: result.ok ? 'Shoya finished' : 'Shoya failed',
+        shoya: result.ok ? 'online' : 'offline'
       })
       activity.log(
         'shoya',

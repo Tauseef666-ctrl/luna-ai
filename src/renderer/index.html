@@ -217,8 +217,32 @@
         <section id="view-shoya" class="view">
           <div class="panel">
             <h2>SHOYA</h2>
-            <p class="sub">Online coding companion (spec 16–17)</p>
-            <div class="empty-state">Shoya integration lands in milestone M4.</div>
+            <p class="sub">Coding companion — routes to the OpenCode CLI or your online API providers (spec 1, 16–17)</p>
+            <div class="shoya-toolbar">
+              <div id="shoya-detect" class="shoya-status-card glass">Detecting OpenCode CLI...</div>
+              <div id="shoya-provs" class="shoya-status-card glass">Provider fallback...</div>
+            </div>
+            <div class="shoya-form glass">
+              <div class="assign-row">
+                <span>Prompt</span>
+              </div>
+              <textarea
+                id="shoya-prompt"
+                rows="6"
+                placeholder="e.g. Add a dark-mode toggle to the renderer · Write tests for chat.ts · Refactor providers.ts into smaller files"
+              ></textarea>
+              <p class="mem-meta" id="shoya-context"></p>
+              <div class="demo-controls">
+                <input id="shoya-project" type="text" placeholder="Project dir (optional — defaults to active project)" />
+                <button id="shoya-run" class="icon-btn">Run Shoya</button>
+                <button id="shoya-term" class="icon-btn">Open Shoya terminal</button>
+                <button id="shoya-refresh" class="icon-btn">Refresh status</button>
+              </div>
+              <p class="sub" id="shoya-status"></p>
+            </div>
+            <div class="asset-section">
+              <div id="shoya-output" class="shoya-output">Output appears here…</div>
+            </div>
           </div>
         </section>
 

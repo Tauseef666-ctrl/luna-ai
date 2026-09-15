@@ -12,6 +12,7 @@ import type {
   MemoryTier,
   PermissionRequest,
   ProviderConfig,
+  ProviderStatus,
   ScanResult
 } from '../../shared/types'
 import { mockBridge } from './mock-bridge'
@@ -845,12 +846,52 @@ async function renderProviders(): Promise<void> {
           priority: 10 + i
         }
         await luna().config.set(c)
-        void renderProviders()
+void renderProviders()
+void renderShoya()
       })
       addRow.appendChild(btn)
     })
     host.appendChild(addRow)
   }
+}
+
+// ---------- shoya (§1, §16, §17) ----------
+async function renderShoya(): Promise<void> {
+  const detection = await luna().shoya.detect()
+  const detect = $('shoya-detect')
+  detect.replaceChildren()
+  const detEl = document.createElement('div')
+  detEl.className = 'sub'
+  if (detection.found) {
+    detEl.textContent = `OpenCode CLI: FOUND · v${detection.version} · ${detection.command} (source: ${detection.source})`
+    $<HTMLButtonElement>('shoya-term').disabled = false
+  } else {
+    detEl.textContent =
+      'OpenCode CLI: not found. Install it (`npm install -g opencode-ai`) or configure an online API provider for the fallback.'
+    $<HTMLButtonElement>('shoya-term').disabled = true
+  }
+  detect.appendChild(detEl)
+
+  const statuses = await luna().providers.status()
+  const online = statuses.filter((s) => s.kind !== 'ollama' && s.enabled)
+  const provs = $('shoya-provs')
+  provs.replaceChildren()
+  const pEl = document.createElement('div')
+  pEl.className = 'sub'
+  pEl.textContent =
+    online.length > 0
+      ? `Online fallback providers: ${online.map((s) => s.label).join(', ')}`
+      : 'No online provider enabled — Shoya needs the OpenCode CLI without one (add in Settings → AI Models).'
+  provs.appendChild(pEl)
+
+  const cfg = await luna().config.get()
+  const projIn = $<HTMLInputElement>('shoya-project')
+  projIn.placeholder = cfg.activeProject
+    ? `Active project: ${cfg.activeProject}`
+    : 'Project dir (optional — defaults to active project)'
+  $('shoya-context').textContent = cfg.activeProject
+    ? `Will run in: ${cfg.activeProject}`
+    : 'No active project — Shoya will use its own directory.'
 }
 
 // ---------- activity ----------
@@ -1155,6 +1196,42 @@ luna().onAiSwitched((p) => {
 $<HTMLButtonElement>('btn-ai-switch').addEventListener('click', () => {
   luna().ai.switch(activeAi === 'luna' ? 'shoya' : 'luna')
 })
+
+// ---------- shoya panel (§16–17) ----------
+$<HTMLButtonElement>('shoya-run').addEventListener('click', async () => {
+  const prompt = $<HTMLTextAreaElement>('shoya-prompt').value.trim()
+  if (!prompt) {
+    toast('Enter a prompt first', 'warn')
+    return
+  }
+  const cfg = await luna().config.get()
+  const proj = $<HTMLInputElement>('shoya-project').value.trim() || cfg.activeProject || undefined
+  const status = $('shoya-status')
+  const out = $('shoya-output')
+  const btn = $<HTMLButtonElement>('shoya-run')
+  btn.disabled = true
+  status.textContent = 'Running…'
+  out.textContent = ''
+  try {
+    const r = await luna().shoya.run(prompt, proj)
+    out.textContent = r.output
+    status.textContent = `${r.ok ? 'Done' : 'Failed'} · backend: ${r.backend}${r.providerId ? ` (${r.providerId})` : ''} · ${r.durationMs}ms${r.truncated ? ' · truncated' : ''}`
+    toast(r.ok ? 'Shoya finished' : 'Shoya failed', r.ok ? 'success' : 'error')
+  } catch (err) {
+    out.textContent = String((err as Error).message)
+    status.textContent = 'Error'
+  } finally {
+    btn.disabled = false
+    void renderShoya()
+  }
+})
+$<HTMLButtonElement>('shoya-term').addEventListener('click', async () => {
+  const cfg = await luna().config.get()
+  const proj = $<HTMLInputElement>('shoya-project').value.trim() || cfg.activeProject || undefined
+  await luna().shoya.launch(proj)
+  toast('Shoya terminal launched', 'success')
+})
+$<HTMLButtonElement>('shoya-refresh').addEventListener('click', () => void renderShoya())
 
 // ---------- voice heard feedback (§11) ----------
 luna().onVoiceHeard((p) => {
@@ -1558,6 +1635,7 @@ document.getElementById('nav')?.addEventListener('click', (e) => {
   }
   if (btn.dataset.view === 'projects') void renderProjects()
   if (btn.dataset.view === 'character') void renderCharacter()
+  if (btn.dataset.view === 'shoya') void renderShoya()
   if (btn.dataset.view === 'memory') {
     void loadSessions()
     void loadMemory()

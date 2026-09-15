@@ -11,7 +11,7 @@ Dev workflow: VS Code (native Windows) + Shoya coding agent → Git → GitHub A
 >
 > **Operating model:** see [`agents.md`](agents.md) — two agents (A = core/backend, B = experience/renderer) build to one shared contract (`src/shared/types.ts`). Per-agent plan files (`plan code A`, `plan experence B.txt`) were removed (commit `2a8c01c`); **this `plan.md` is the master running status.**
 >
-> **Latest (2026-09-15):** v0.5.0 prep — env verification: **Piper ✓** (TTS→WAV verified), **Ollama ✓** (0.34.0, serving on 11434, models on D), **Whisper ✗** (Smart App Control blocks `whisper-cli.exe` — deferred, pushing tags TBD), **Three.js experiment removed** (cleanup, resolved). Phase-1 repo audit (§55) complete → findings in **§2g**; main-process IPC refactor → **§2h**; **AI Provider System (§4) fully done → §2i**.
+> **Latest (2026-09-15):** v0.5.0 prep — env verification: **Piper ✓** (TTS→WAV verified), **Ollama ✓** (0.34.0, serving on 11434, models on D), **Whisper ✗** (SAC — deferred), **Three.js experiment removed** (cleanup done). Repo audit → **§2g**; IPC refactor → **§2h**; **AI Provider System (§4) fully done → §2i**; **Shoya panel + routing state → §2j**.
 
 ---
 
@@ -179,7 +179,19 @@ Main-process monolith (`index.ts` ~609 lines, ~50 handlers) split into domain mo
 - `index.ts` — app lifecycle + wiring only.
 - `tts.ts` — gained `speakTo`/`stopTts` (previously inline in `index.ts`).
 
-**Next (§55 order):** Shoya routing → tools/permissions (uses `permission.ts`) → replace fake voice enrollment (`dashboard.ts:1172-1187`) with real STT (blocked on the SAC decision, §1).
+**Next (§55 order):** tools/permissions (uses `permission.ts`) → upgrade shoya run to stream/toast → replace fake voice enrollment (`dashboard.ts:1172-1187`) with real STT (blocked on the SAC decision, §1).
+
+---
+
+## 2j. Shoya persona & dashboard panel (§1, §16, §17 — done 2026-09-15)
+
+Backend was already complete (`shoya.ts`: detectOpenCode over npm/known-dirs/PATH, `runShoya` provider-first → OpenCode CLI fallback → provider fallback on CLI error, launchShoyaTerminal; router routes `shoya` target). This increment added the missing **UI + shared-state wiring**:
+
+- `view-shoya` panel (dashboard): OpenCode CLI detection card (version/path/source, `shoya-refresh`), online-fallback-provider card (`providers:status`, kind≠ollama, enabled), prompt textarea → **Run Shoya** (`shoya:run` with project override input defaulting to `activeProject`), result output block (selectable) + status line (backend · providerId · durationMs · truncated), **Open Shoya terminal** (`shoya:launch`), nav + init render.
+- `handlers-ai.ts`: `shoya:detect` and `shoya:run` now update AppState.`shoya` (online/offline) so the sidebar nav badge (previously stuck "offline") reflects an actual backend: OpenCode CLI found **or** an enabled online provider.
+- Verified on this machine: `opencode --version` → **1.18.31** on PATH (detection path confirmed, `.cmd` shim handled by `runCli`), typecheck ✓, build ✓, smoke boot ✓.
+
+**Note:** a live `shoya:run` is **not** executed headlessly (opencode run needs its own login/model config and can block up to the 10-min CLI timeout) — left for the user to trigger from the panel.
 
 ---
 
