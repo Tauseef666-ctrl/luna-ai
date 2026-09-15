@@ -11,7 +11,7 @@ Dev workflow: VS Code (native Windows) + Shoya coding agent → Git → GitHub A
 >
 > **Operating model:** see [`agents.md`](agents.md) — two agents (A = core/backend, B = experience/renderer) build to one shared contract (`src/shared/types.ts`). Per-agent plan files (`plan code A`, `plan experence B.txt`) were removed (commit `2a8c01c`); **this `plan.md` is the master running status.**
 >
-> **Latest (2026-09-15):** v0.5.0 prep — env verification: **Piper ✓** (TTS→WAV verified), **Ollama ✓** (0.34.0, serving on 11434, models on D), **Whisper ✗** (Smart App Control blocks `whisper-cli.exe` — decision needed), **Three.js ✓** (dep smoke test only — superseded experiment, see §1 blockers). Phase-1 repo audit (§55) complete → findings in **§2g**; main-process IPC refactor → **§2h**; **Provider System UI done → §2i**.
+> **Latest (2026-09-15):** v0.5.0 prep — env verification: **Piper ✓** (TTS→WAV verified), **Ollama ✓** (0.34.0, serving on 11434, models on D), **Whisper ✗** (Smart App Control blocks `whisper-cli.exe` — deferred, pushing tags TBD), **Three.js experiment removed** (cleanup, resolved). Phase-1 repo audit (§55) complete → findings in **§2g**; main-process IPC refactor → **§2h**; **AI Provider System (§4) fully done → §2i**.
 
 ---
 
@@ -46,7 +46,7 @@ Dev workflow: VS Code (native Windows) + Shoya coding agent → Git → GitHub A
 - [x] **Ollama CLI installed** (0.34.0) — `OLLAMA_MODELS=D:\own-ai\models\ollama` set; blobs recognized on D with no re-pull (verified serving + both models respond)
 - [~] **3D character/animation files** — **resolved by the v0.4.0 2D pivot**: characters are the concept art themselves, animated by CSS; no 3D files needed
 - [ ] **Whisper STT blocked on this machine** — x64 `whisper-cli.exe` blocked by **Smart App Control** (CodeIntegrity 3118); 32-bit builds exit `0xC0000135` (DLL-not-found, root cause unresolved). Options: disable SAC (user decision), ship the allowed x64 `whisper-command` build, or alternate STT. Blocks §4.1 + the v1 voice loop.
-- [ ] **Uncommitted Three.js experiment** — from an earlier 3D-avatar direction (superseded by the 2D pivot): `three@0.186.0` + `@types/three` added to `package.json` (`three` ships no `.d.ts`), `src/avatar/types.ts` authored and typechecks. Clean up on confirm.
+- [x] **Three.js experiment cleaned up (2026-09-15)** — `three@0.186.0` + `@types/three` uninstalled, `src/avatar/types.ts` + folder deleted (superseded 3D direction; v2 spec is 2D-only, no code referenced them).
 
 ---
 
@@ -130,7 +130,7 @@ User feedback: "drop the 3D model / it looks heavy — show both characters side
 
 ## 2f. Build Status — v2 spec alignment (in progress, uncommitted)
 
-Aligning the shipped v0.4.0 to the v2 spec (`luna-spec.md`). Work items (v0.5.0). Env groundwork verified 2026-09-15: **Piper ✓ / Ollama ✓ / Three.js (experiment only) ✓ / Whisper ✗ (SAC)**; repo audit done → **§2g**.
+Aligning the shipped v0.4.0 to the v2 spec (`luna-spec.md`). Work items (v0.5.0). Env groundwork verified 2026-09-15: **Piper ✓ / Ollama ✓ / Three.js experiment removed / Whisper ✗ (SAC, deferred)**; repo audit done → **§2g**.
 - [ ] **True transparent floating window** (§2.3) — `transparent: true` frameless window, no visible panel/box behind the character, only character + subtitle/status bar over the desktop
 - [ ] **Background service (§10)** — tray-resident main process (no window on start), "Start with Windows" opt-in, push-to-talk global hotkey summons the floating window without opening the dashboard, lightweight idle (no rig rendering)
 - [x] **AI Provider System (§4)** — config defaults + management UI (**§2i**), encrypted keys (DPAPI), per-provider settings + Test Connection, non-streaming + **streaming** chat, online fallback when Ollama offline
@@ -380,4 +380,4 @@ Provider System (§4) is functionally complete: config defaults ✓, management 
 - [x] **Character art direction**: LUNA = `img1_nishimiya.png`, Shoya = `img2_shoya.png` as live visuals (in the app default since v0.4.0). Optional: user-supplied 2D sprite sheets later.
 - [x] Reference-image rename to spec names accepted.
 - [ ] **Smart App Control**: OK to **disable SAC** (Windows Security → App & browser control) to unblock `whisper-cli.exe` for local STT? (also renders the 32-bit DLL research moot). Alternatives: ship the x64 `whisper-command` build that IS allowed, or a custom STT build. **Blocks §4.1 + the v1 voice loop.**
-- [ ] **Clean up Three.js experiment**: remove `three`/`@types/three` deps + `src/avatar/` (superseded 3D direction)? Recommended yes to keep the repo aligned to the 2D pivot.
+- [x] **Clean up Three.js experiment** — done 2026-09-15: `three`/`@types/three` removed + `src/avatar/` deleted (repo aligned to the 2D pivot; committed with cleanup).
