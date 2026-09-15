@@ -1,6 +1,7 @@
 import type { WebContents } from 'electron'
 import type { ChatMessage } from './ollama'
 import { ollamaChat, ollamaChatStream, ollamaHealth, listOllamaModels } from './ollama'
+import { enabledProviders, providerChat } from './providers'
 import { memory, sessions } from './memory'
 import { activity } from './activity'
 import { loadConfig } from './config'
@@ -30,10 +31,7 @@ export async function runChat(target: WebContents | null, text: string): Promise
   setState({ char: 'thinking', status: 'Thinking...' })
   try {
     const ok = await ollamaHealth(c.ollamaUrl)
-    if (!ok) {
-      setState({ char: 'idle', status: 'Offline — start Ollama to chat locally' })
-      return 'LUNA is offline and Ollama is not running. Start Ollama (with OLLAMA_MODELS=D:\\own-ai\\models\\ollama) to chat locally.'
-    }
+    if (!ok) return onlineFallback(target, text)
     const models = await listOllamaModels(c.ollamaUrl)
     const preferred =
       models.find((m) => m.name === c.character.luna.model) ??
@@ -105,6 +103,47 @@ export async function runChat(target: WebContents | null, text: string): Promise
     return reply
   } catch (err) {
     activity.log('chat', `Chat error: ${(err as Error).message}`, 'error')
+    setState({ char: 'idle', status: 'Chat error' })
+    return `Error: ${(err as Error).message}`
+  }
+}
+
+async function onlineFallback(target: WebContents | null, text: string): Promise<string> {
+  const c = loadConfig()
+  const online = enabledProviders().filter((p) => p.kind !== 'ollama')
+  if (online.length === 0) {
+    setState({ char: 'idle', status: 'Offline — start Ollama to chat locally' })
+    return 'LUNA is offline and Ollama is not running. Start Ollama (with OLLAMA_MODELS=D:\\own-ai\\models\\ollama) to chat locally, or add an online API provider in Settings → AI Models.'
+  }
+  const p = online[0]
+  const session = currentSessionId ? sessions.get(currentSessionId) : undefined
+  const recall = memory.recall(text)
+  const projectNotes = memory.projectContext(c.activeProject)
+  const parts = [c.chat.systemPrompt]
+  if (c.activeProject && projectNotes) {
+    parts.push(`Active project: ${c.activeProject}\nProject notes:\n${projectNotes}`)
+  } else if (c.activeProject) {
+    parts.push(`Active project: ${c.activeProject}`)
+  }
+  if (recall) parts.push(`Relevant memories from earlier conversations:\n${recall}`)
+  const history: ChatMessage[] = [{ role: 'system', content: parts.join('\n\n') }]
+  const turns = session ? session.turns.slice(-12) : []
+  for (const t of turns) history.push({ role: t.role, content: t.content })
+  history.push({ role: 'user', content: text })
+  if (session) sessions.appendTurn(currentSessionId, 'user', text)
+  setState({ char: 'thinking', status: 'Thinking (online)...', activeModel: p.label })
+  activity.log('chat', `Message to online provider ${p.id} (session ${currentSessionId.slice(0, 8)})`)
+  try {
+    const reply = await providerChat(p, history, {
+      temperature: c.chat.temperature,
+      maxTokens: c.chat.maxTokens
+    })
+    if (session) sessions.appendTurn(currentSessionId, 'assistant', reply)
+    setState({ char: 'idle', status: 'Ready to assist...', activeModel: p.label })
+    speakTo(target, reply, c.character.luna.speaking)
+    return reply
+  } catch (err) {
+    activity.log('chat', `Online provider ${p.id} error: ${(err as Error).message}`, 'error')
     setState({ char: 'idle', status: 'Chat error' })
     return `Error: ${(err as Error).message}`
   }

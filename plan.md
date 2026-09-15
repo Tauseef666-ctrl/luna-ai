@@ -190,9 +190,9 @@ Backend was already complete (spec §4): `src/main/providers.ts` (DPAPI-encrypte
 - `config.ts` DEFAULTS: gemini/claude/openai entries added (disabled, `baseUrl`+`model` defaults, deterministic `apiKeyRef: provider.<kind>`, priority 1-3 after ollama) — deepMerge preserves them under existing user configs.
 - `view-ai` (AI Models) now renders `renderProviders()`: per-provider cards (status badge, base URL/model fields, enabled toggle, priority, plaintext-off API key save/clear via `secret:*`, **Test connection** via `providers:test` with live status + latency + model list, Remove) + "Add …" buttons for missing kinds. Local model list `#ai-list` + `#ollama-url` stay in `view-ai`; **duplicate `#ai-list` id removed from `set-ai`** (§2g pre-existing bug).
 - `mock-bridge.ts` SAMPLE_CONFIG providers expanded to match real defaults (design-preview parity).
-- Verified: typecheck ✓, build ✓, smoke boot ✓.
+- **Chat online fallback** (`chat.ts`): `runChat` no longer dead-ends when Ollama is offline — it falls back to the first enabled non-Ollama provider (`providerChat`, non-streaming) with full memory + project context, echoing `Thinking (online)...` and marking `activeModel` as the provider label. Router fallback was already wired the same way (§§ 2i/22). Verified: typecheck ✓, build ✓, smoke boot ✓.
 
-**Next:** streaming for online providers (`providerChat` currently non-streaming) + wire enabled online providers into LUNA chat fallback ordering (router).
+**Next:** streaming for online providers (`providerChat` currently non-streaming) — full-stream token pushes to `chat:token` like the Ollama path.
 
 ---
 
