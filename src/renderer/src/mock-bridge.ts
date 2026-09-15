@@ -71,6 +71,36 @@ const SAMPLE_CONFIG: LunaConfig = {
       apiKeyRef: '',
       enabled: true,
       priority: 0
+    },
+    gemini: {
+      id: 'gemini',
+      kind: 'gemini',
+      label: 'Google Gemini',
+      baseUrl: 'https://generativelanguage.googleapis.com',
+      model: 'gemini-2.0-flash',
+      apiKeyRef: 'provider.gemini',
+      enabled: false,
+      priority: 1
+    },
+    claude: {
+      id: 'claude',
+      kind: 'claude',
+      label: 'Anthropic Claude',
+      baseUrl: 'https://api.anthropic.com',
+      model: 'claude-sonnet-4-20250514',
+      apiKeyRef: 'provider.claude',
+      enabled: false,
+      priority: 2
+    },
+    openai: {
+      id: 'openai',
+      kind: 'openai',
+      label: 'OpenAI-compatible',
+      baseUrl: '',
+      model: '',
+      apiKeyRef: 'provider.openai',
+      enabled: false,
+      priority: 3
     }
   }
 }

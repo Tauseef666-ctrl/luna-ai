@@ -11,7 +11,7 @@ Dev workflow: VS Code (native Windows) + Shoya coding agent → Git → GitHub A
 >
 > **Operating model:** see [`agents.md`](agents.md) — two agents (A = core/backend, B = experience/renderer) build to one shared contract (`src/shared/types.ts`). Per-agent plan files (`plan code A`, `plan experence B.txt`) were removed (commit `2a8c01c`); **this `plan.md` is the master running status.**
 >
-> **Latest (2026-09-15):** v0.5.0 prep — env verification: **Piper ✓** (TTS→WAV verified), **Ollama ✓** (0.34.0, serving on 11434, models on D), **Whisper ✗** (Smart App Control blocks `whisper-cli.exe` — decision needed), **Three.js ✓** (dep smoke test only — superseded experiment, see §1 blockers). Phase-1 repo audit (§55) complete → findings in **§2g**.
+> **Latest (2026-09-15):** v0.5.0 prep — env verification: **Piper ✓** (TTS→WAV verified), **Ollama ✓** (0.34.0, serving on 11434, models on D), **Whisper ✗** (Smart App Control blocks `whisper-cli.exe` — decision needed), **Three.js ✓** (dep smoke test only — superseded experiment, see §1 blockers). Phase-1 repo audit (§55) complete → findings in **§2g**; main-process IPC refactor → **§2h**; **Provider System UI done → §2i**.
 
 ---
 
@@ -133,7 +133,7 @@ User feedback: "drop the 3D model / it looks heavy — show both characters side
 Aligning the shipped v0.4.0 to the v2 spec (`luna-spec.md`). Work items (v0.5.0). Env groundwork verified 2026-09-15: **Piper ✓ / Ollama ✓ / Three.js (experiment only) ✓ / Whisper ✗ (SAC)**; repo audit done → **§2g**.
 - [ ] **True transparent floating window** (§2.3) — `transparent: true` frameless window, no visible panel/box behind the character, only character + subtitle/status bar over the desktop
 - [ ] **Background service (§10)** — tray-resident main process (no window on start), "Start with Windows" opt-in, push-to-talk global hotkey summons the floating window without opening the dashboard, lightweight idle (no rig rendering)
-- [ ] **AI Provider System (§4)** — unified providers: Ollama (local) + Google Gemini + Anthropic Claude + OpenAI-compatible; API keys in Windows Credential Manager (no hardcoded keys); Settings per-provider (Base URL, Model, Temperature, Max Tokens, System Prompt, Timeout) + Test Connection (Connected/Disconnected/Invalid Key/Rate Limited/Offline/Model Unavailable)
+- [~] **AI Provider System (§4)** — backend + secrets (DPAPI) + per-provider settings/Test Connection done (**§2i**); streaming for online providers + routing integration pending → **§2i**
 - [ ] **Shoya = persona routing (§1, §16)** — auto-detect Shoya backends (OpenCode CLI on PATH / known dirs / VS Code extension), per-task routing, "Open Shoya for this project and continue"
 - [ ] **2D rig pipeline (§2.2)** — Live2D (`.moc3`) or Rive (`.riv`) rig produced from img1/img2 (dev-time tooling by Shoya, removed after export) → rendered on WebGL canvas in Electron; interim: current CSS-motion characters remain until rig files exist
 - [ ] **Action self-verification (§32.3)** — verify results (file exists / exit code) before reporting success
@@ -179,7 +179,20 @@ Main-process monolith (`index.ts` ~609 lines, ~50 handlers) split into domain mo
 - `index.ts` — app lifecycle + wiring only.
 - `tts.ts` — gained `speakTo`/`stopTts` (previously inline in `index.ts`).
 
-**Next (§55 order):** Provider System (online adapters beyond Ollama) → Shoya routing → tools/permissions (uses `permission.ts`) → replace fake voice enrollment (`dashboard.ts:1172-1187`) with real STT (blocked on the SAC decision, §1).
+**Next (§55 order):** Shoya routing → tools/permissions (uses `permission.ts`) → replace fake voice enrollment (`dashboard.ts:1172-1187`) with real STT (blocked on the SAC decision, §1).
+
+---
+
+## 2i. Provider System UI — online providers (§4, done 2026-09-15)
+
+Backend was already complete (spec §4): `src/main/providers.ts` (DPAPI-encrypted secrets, `testConnection`, non-streaming `providerChat`, `providerStatuses`, `enabledProviders`; kinds `ollama|gemini|claude|openai`), `router.ts` luna-online fallback, preload channels `providers:test/status/chat` + `secret:set/has/delete`. This increment added the missing **management UI** + config defaults:
+
+- `config.ts` DEFAULTS: gemini/claude/openai entries added (disabled, `baseUrl`+`model` defaults, deterministic `apiKeyRef: provider.<kind>`, priority 1-3 after ollama) — deepMerge preserves them under existing user configs.
+- `view-ai` (AI Models) now renders `renderProviders()`: per-provider cards (status badge, base URL/model fields, enabled toggle, priority, plaintext-off API key save/clear via `secret:*`, **Test connection** via `providers:test` with live status + latency + model list, Remove) + "Add …" buttons for missing kinds. Local model list `#ai-list` + `#ollama-url` stay in `view-ai`; **duplicate `#ai-list` id removed from `set-ai`** (§2g pre-existing bug).
+- `mock-bridge.ts` SAMPLE_CONFIG providers expanded to match real defaults (design-preview parity).
+- Verified: typecheck ✓, build ✓, smoke boot ✓.
+
+**Next:** streaming for online providers (`providerChat` currently non-streaming) + wire enabled online providers into LUNA chat fallback ordering (router).
 
 ---
 

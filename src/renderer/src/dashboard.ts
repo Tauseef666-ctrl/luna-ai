@@ -11,6 +11,7 @@ import type {
   MemoryEntry,
   MemoryTier,
   PermissionRequest,
+  ProviderConfig,
   ScanResult
 } from '../../shared/types'
 import { mockBridge } from './mock-bridge'
@@ -624,6 +625,232 @@ async function renderChatSettings(): Promise<void> {
   })
   sys.append(span, ta)
   host.appendChild(sys)
+}
+
+// ---------- providers ----------
+const PROVIDER_TEMPLATES: Array<{
+  id: string
+  kind: ProviderConfig['kind']
+  label: string
+  baseUrl: string
+  model: string
+  apiKeyRef: string
+}> = [
+  {
+    id: 'gemini',
+    kind: 'gemini',
+    label: 'Google Gemini',
+    baseUrl: 'https://generativelanguage.googleapis.com',
+    model: 'gemini-2.0-flash',
+    apiKeyRef: 'provider.gemini'
+  },
+  {
+    id: 'claude',
+    kind: 'claude',
+    label: 'Anthropic Claude',
+    baseUrl: 'https://api.anthropic.com',
+    model: 'claude-sonnet-4-20250514',
+    apiKeyRef: 'provider.claude'
+  },
+  {
+    id: 'openai',
+    kind: 'openai',
+    label: 'OpenAI-compatible',
+    baseUrl: '',
+    model: '',
+    apiKeyRef: 'provider.openai'
+  }
+]
+
+async function saveProvider(id: string, patch: Partial<ProviderConfig>): Promise<void> {
+  const c = await luna().config.get()
+  const cur = c.providers[id]
+  if (!cur) return
+  c.providers[id] = { ...cur, ...patch }
+  await luna().config.set(c)
+}
+
+function providerCard(p: ProviderConfig): HTMLElement {
+  const card = document.createElement('div')
+  card.className = 'provider-card glass'
+
+  const head = document.createElement('div')
+  head.className = 'ai-card-head'
+  const title = document.createElement('h4')
+  title.textContent = p.label
+  const badge = document.createElement('span')
+  badge.className = `session-badge ${p.enabled ? 'success' : ''}`
+  badge.textContent = p.kind.toUpperCase()
+  head.append(title, badge)
+  card.appendChild(head)
+
+  const status = document.createElement('p')
+  status.className = 'sub'
+  status.textContent = p.enabled ? 'Ready — configure, then Test connection' : 'Disabled'
+  card.appendChild(status)
+
+  const grid = document.createElement('div')
+  grid.className = 'assign-grid'
+  const field = (label: string, value: string, apply: (v: string) => void): void => {
+    const wrap = document.createElement('label')
+    wrap.className = 'assign-row'
+    const span = document.createElement('span')
+    span.textContent = label
+    const inp = document.createElement('input')
+    inp.type = 'text'
+    inp.value = value ?? ''
+    inp.disabled = p.kind === 'ollama'
+    inp.addEventListener('change', () => apply(inp.value.trim()))
+    wrap.append(span, inp)
+    grid.appendChild(wrap)
+  }
+  field('Base URL', p.baseUrl ?? '', (v) => void saveProvider(p.id, { baseUrl: v }))
+  field('Model', p.model ?? '', (v) => void saveProvider(p.id, { model: v }))
+  card.appendChild(grid)
+
+  const en = document.createElement('label')
+  en.className = 'assign-row'
+  const enSpan = document.createElement('span')
+  enSpan.textContent = 'Enabled'
+  const enSel = document.createElement('select')
+  for (const [v, t] of [
+    ['false', 'Off'],
+    ['true', 'On']
+  ] as const) {
+    const o = document.createElement('option')
+    o.value = v
+    o.textContent = t
+    if (String(p.enabled) === v) o.selected = true
+    enSel.appendChild(o)
+  }
+  enSel.value = String(p.enabled)
+  enSel.addEventListener('change', () => {
+    void saveProvider(p.id, { enabled: enSel.value === 'true' }).then(() => {
+      badge.className = `session-badge ${enSel.value === 'true' ? 'success' : ''}`
+      status.textContent = enSel.value === 'true' ? 'Ready — configure, then Test connection' : 'Disabled'
+    })
+  })
+  en.append(enSpan, enSel)
+  card.appendChild(en)
+
+  const pr = document.createElement('label')
+  pr.className = 'assign-row'
+  const prSpan = document.createElement('span')
+  prSpan.textContent = 'Priority'
+  const prIn = document.createElement('input')
+  prIn.type = 'number'
+  prIn.min = '0'
+  prIn.value = String(p.priority)
+  prIn.addEventListener('change', () => void saveProvider(p.id, { priority: Number(prIn.value) || 0 }))
+  pr.append(prSpan, prIn)
+  card.appendChild(pr)
+
+  const keyRow = document.createElement('div')
+  keyRow.className = 'assign-row'
+  const keyLabel = document.createElement('span')
+  keyLabel.textContent = 'API key'
+  const keyInput = document.createElement('input')
+  keyInput.type = 'password'
+  keyInput.placeholder = p.kind === 'ollama' ? 'not needed — local' : 'stored encrypted (Credential Manager)'
+  keyInput.disabled = p.kind === 'ollama'
+  const keySave = document.createElement('button')
+  keySave.className = 'icon-btn'
+  keySave.textContent = 'Save'
+  keySave.disabled = p.kind === 'ollama'
+  const keyHint = document.createElement('span')
+  keyHint.className = 'mem-meta'
+  const refreshKey = async (): Promise<void> => {
+    if (p.kind === 'ollama') keyHint.textContent = 'local — no key'
+    else keyHint.textContent = (await luna().secret.has(p.apiKeyRef)) ? 'key stored' : 'no key set'
+  }
+  keySave.addEventListener('click', async () => {
+    const v = keyInput.value.trim()
+    if (!v) return
+    const ok = await luna().secret.set(p.apiKeyRef, v)
+    toast(ok ? `${p.label}: API key saved` : 'Failed to save API key', ok ? 'success' : 'error')
+    if (ok) {
+      keyInput.value = ''
+      void refreshKey()
+    }
+  })
+  keyRow.append(keyLabel, keyInput, keySave, keyHint)
+  card.appendChild(keyRow)
+  void refreshKey()
+
+  const btns = document.createElement('div')
+  btns.className = 'demo-controls'
+  const testBtn = document.createElement('button')
+  testBtn.className = 'icon-btn'
+  testBtn.textContent = 'Test connection'
+  testBtn.disabled = p.kind === 'ollama' && !p.baseUrl
+  testBtn.addEventListener('click', async () => {
+    testBtn.classList.add('loading')
+    status.textContent = 'Testing...'
+    try {
+      const r: { ok: boolean; latencyMs: number; detail: string; models: string[] } = await luna().providers.test(
+        p.id
+      )
+      status.textContent = `${r.ok ? 'Connected' : 'Failed'} · ${r.detail} (${r.latencyMs}ms)${
+        r.models.length ? ` · models: ${r.models.slice(0, 3).join(', ')}` : ''
+      }`
+      toast(`${p.label} ${r.ok ? 'connected' : 'test failed'}`, r.ok ? 'success' : 'warn')
+    } catch (err) {
+      status.textContent = `Error: ${(err as Error).message}`
+    } finally {
+      testBtn.classList.remove('loading')
+    }
+  })
+  const delBtn = document.createElement('button')
+  delBtn.className = 'icon-btn'
+  delBtn.textContent = 'Remove'
+  delBtn.disabled = p.kind === 'ollama'
+  delBtn.addEventListener('click', async () => {
+    if (!confirm(`Remove provider "${p.label}"? This also deletes its stored API key.`)) return
+    const c = await luna().config.get()
+    delete c.providers[p.id]
+    await luna().config.set(c)
+    if (p.apiKeyRef) await luna().secret.delete(p.apiKeyRef)
+    void renderProviders()
+  })
+  btns.append(testBtn, delBtn)
+  card.appendChild(btns)
+
+  return card
+}
+
+async function renderProviders(): Promise<void> {
+  const host = $('providers')
+  host.replaceChildren()
+  const cfg = await luna().config.get()
+  const entries = Object.values(cfg.providers ?? {}).sort((a, b) => a.priority - b.priority)
+  for (const p of entries) host.appendChild(providerCard(p))
+  const missing = PROVIDER_TEMPLATES.filter((t) => !entries.some((e) => e.id === t.id))
+  if (missing.length > 0) {
+    const addRow = document.createElement('div')
+    addRow.className = 'demo-controls'
+    missing.forEach((t, i) => {
+      const btn = document.createElement('button')
+      btn.className = 'icon-btn'
+      btn.textContent = `Add ${t.label}`
+      btn.addEventListener('click', async () => {
+        const c = await luna().config.get()
+        c.providers[t.id] = {
+          id: t.id,
+          kind: t.kind,
+          label: t.label,
+          baseUrl: t.baseUrl,
+          model: t.model,
+          apiKeyRef: t.apiKeyRef,
+          enabled: false,
+          priority: 10 + i
+        }
+        await luna().config.set(c)
+        void renderProviders()
+      })
+      addRow.appendChild(btn)
+    })
+    host.appendChild(addRow)
+  }
 }
 
 // ---------- activity ----------
@@ -1488,6 +1715,7 @@ void renderCharacter()
 void loadCharacterArt()
 void renderProjects()
 void renderChatSettings()
+void renderProviders()
 void loadActivity()
 void loadMemory()
 void loadSessions()

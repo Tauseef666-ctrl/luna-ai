@@ -167,8 +167,15 @@
         <section id="view-ai" class="view">
           <div class="panel">
             <h2>AI MODELS</h2>
-            <p class="sub">Detected local models (Ollama API: <span id="ollama-url"></span>)</p>
+            <p class="sub">
+              Local models (Ollama API: <span id="ollama-url"></span>) and online API providers (spec §4)
+            </p>
             <div id="ai-list" class="empty-state">Scanning workspace...</div>
+            <h3 class="sub">
+              API providers — Gemini / Claude / OpenAI-compatible / Ollama · API keys stored encrypted (Windows
+              Credential Manager, spec §4, §24)
+            </h3>
+            <div id="providers" class="asset-section">Loading providers...</div>
           </div>
         </section>
 
@@ -297,10 +304,6 @@
               </div>
 
               <div class="set-panel" id="set-ai">
-                <h3 class="sub">
-                  Online providers (Gemini / Claude / OpenAI / Ollama) land with Core's Provider System (§4)
-                </h3>
-                <div id="ai-list" class="empty-state">Scanning workspace...</div>
                 <div id="assignment" class="asset-section"></div>
                 <div id="asset-llm" class="asset-section"></div>
                 <h3 class="sub">Chat behavior</h3>
