@@ -18,6 +18,12 @@ import { ensureCurrentSession, getCurrentSessionId, setCurrentSessionId } from '
 import { addRoutine, listRoutines, removeRoutine, toggleRoutine } from './routines'
 import { addEvent, listEvents, listUpcoming, parseWhen, removeEvent, updateEvent } from './calendar'
 import { isClipboardEnabled, readClipboard, writeClipboard } from './clipboard'
+import {
+  browserClose,
+  browserExtract,
+  browserOpen,
+  browserState
+} from './browser'
 import type {
   ActivityEvent,
   LunaSession,
@@ -92,6 +98,11 @@ export function registerCoreHandlers(): void {
   ipcMain.handle('clipboard:enabled', () => isClipboardEnabled())
   ipcMain.handle('clipboard:read', () => readClipboard())
   ipcMain.handle('clipboard:write', (_e, text: string) => writeClipboard(text))
+
+  ipcMain.handle('browser:state', () => browserState())
+  ipcMain.handle('browser:open', (_e, url: string) => browserOpen({ url }))
+  ipcMain.handle('browser:read', () => browserExtract())
+  ipcMain.handle('browser:close', () => browserClose())
 
   ipcMain.handle('sessions:list', (): LunaSession[] => sessions.list())
   ipcMain.handle('sessions:current', (): LunaSession => ensureCurrentSession())

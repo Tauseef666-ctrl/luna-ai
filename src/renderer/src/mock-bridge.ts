@@ -3,6 +3,7 @@ import type {
   ActivityEvent,
   AiSwitchPayload,
   AppState,
+  BrowserState,
   CalendarEvent,
   CharacterStatePayload,
   CodingContext,
@@ -607,6 +608,16 @@ export const mockBridge: LunaBridge = {
     read: () => Promise.resolve('[Clipboard mock] text copied from the real system clipboard.'),
     write: () => Promise.resolve({ ok: true })
   },
+  browser: {
+    state: () =>
+      Promise.resolve({ open: false, url: '', title: '', tabs: [] }),
+    open: (url) =>
+      Promise.resolve({ ok: true, output: `Opened ${url} in the LUNA browser (mock).` }),
+    read: () =>
+      Promise.resolve({ ok: true, output: '[Mock] Page content would appear here.' }),
+    close: () => Promise.resolve({ ok: true, output: 'Browser closed.' })
+  },
+  onBrowserState: () => {},
   context: {
     gather: () =>
       Promise.resolve({

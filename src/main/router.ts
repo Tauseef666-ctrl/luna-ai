@@ -11,6 +11,7 @@ import { emitDigest } from './digest'
 import { addRoutine, parseRoutine } from './routines'
 import { addEvent, listUpcoming, parseWhen } from './calendar'
 import { readClipboardSafe, writeClipboard } from './clipboard'
+import { browserOpen, browserNavigate, browserExtract, browserFill, browserClick, browserActive } from './browser'
 import { requestPermission } from './permission'
 import type { RouteResult, RouterTarget } from '../shared/types'
 
@@ -87,6 +88,30 @@ const RESEARCH_HINTS = ['search', 'research', 'news', 'find out', 'look up', 'wh
 
 const URL_HINTS = ['open website', 'browse', 'go to https://', 'open http', 'website']
 
+const BROWSER_HINTS = [
+  'open a browser',
+  'browser session',
+  'browse the web',
+  'in the browser',
+  'on the webpage',
+  'on the page',
+  'fill the form',
+  'fill the field',
+  'submit the form',
+  'webpage',
+  'web page',
+  'website content',
+  'open the website',
+  'search the web',
+  'navigate to',
+  'go to http'
+]
+
+// Subsets used for action routing within the browser target.
+const BROWSER_READ_HINTS = ['read the page', 'extract', 'summarize the page', 'what is on the page', 'what is on this page', 'content of the page', 'what is the title', 'what does the page say', 'page content']
+const BROWSER_FILL_HINTS = ['fill the', 'type in the', 'enter the', 'type in ', 'fill ']
+const BROWSER_CLICK_HINTS = ['click the', 'click ', 'press the', 'tap the', 'press button', 'click submit', 'press submit']
+
 const DIGEST_HINTS = ['what did i miss', 'what missed', 'catch me up', 'digest', 'anything new', 'anything since', 'what happened while', 'miss anything', 'missed anything']
 
 const REMINDER_HINTS = ['remind me', 'reminder', 'remind ', 'set a reminder', 'in 2 hours', 'in an hour', 'every weekday', 'every morning', 'every day at', 'daily at']
@@ -116,6 +141,14 @@ function classify(text: string): RouterTask {
   const isResearch = RESEARCH_HINTS.some((h) => t.includes(h))
   const url = extractUrl(text)
   const isUrl = URL_HINTS.some((h) => t.includes(h)) && Boolean(url)
+  const isBrowserHint = BROWSER_HINTS.some((h) => t.includes(h)) || isUrl
+  const hasActiveBrowserSession = browserActive()
+  const isBrowserRead = BROWSER_READ_HINTS.some((h) => t.includes(h)) && hasActiveBrowserSession
+  const isBrowserFill = BROWSER_FILL_HINTS.some((h) => t.includes(h)) && hasActiveBrowserSession
+  const isBrowserClick = BROWSER_CLICK_HINTS.some((h) => t.includes(h)) && hasActiveBrowserSession
+  const isBrowserNavigate = isUrl
+  const isBrowser = isBrowserHint || isBrowserRead || isBrowserFill || isBrowserClick
+  const isBrowserAction = isBrowserRead || isBrowserFill || isBrowserClick
   const isCommand = t.startsWith('cmd ') || t.startsWith('run command') || t.startsWith('>')
   const isReminder = REMINDER_HINTS.some((h) => t.includes(h))
 
@@ -135,10 +168,19 @@ function classify(text: string): RouterTask {
     return { target: 'clipboard', confidence: 0.85, reason: 'Clipboard intent detected', params: { prompt: text, tier: 'safe' } }
   if (isEmail)
     return { target: 'email', confidence: 0.85, reason: 'Email intent detected', params: { prompt: text, tier: 'safe' } }
+  if (isBrowser)
+    return {
+      target: 'browser',
+      confidence: 0.9,
+      reason: isBrowserRead ? 'Browser extract/read intent'
+        : isBrowserFill ? 'Browser form fill intent'
+        : isBrowserClick ? 'Browser click intent'
+        : isBrowserNavigate ? 'Browser navigate intent'
+        : 'Browser automation intent',
+      params: { prompt: text, url, tier: (isBrowserRead || isBrowserNavigate) ? 'safe' : 'confirm' }
+    }
   if (isVscode)
     return { target: 'vscode', confidence: 0.85, reason: 'VS Code workspace intent', params: { prompt: text, tier: 'safe' } }
-  if (isUrl)
-    return { target: 'windows', confidence: 0.85, reason: 'URL open request', params: { url, tier: 'safe' } }
   if (isWindow)
     return { target: 'windows', confidence: 0.8, reason: 'Window/app control detected', params: { prompt: text, tier: 'confirm' } }
   if (isResearch)
@@ -452,6 +494,36 @@ export async function route(text: string): Promise<RouteResult> {
         output:
           'No mailbox is connected yet, so I cannot read your inbox. Hook up an email account in Settings → AI Models when the mail integration lands; drafts and send will always require your confirmation first.',
         providerId: 'email'
+      }
+    }
+    case 'browser': {
+      const q = task.params.prompt ?? text
+      const low = q.toLowerCase()
+
+      if (BROWSER_READ_HINTS.some((h) => low.includes(h))) {
+        const r = await browserExtract()
+        return { target: 'browser', ok: r.ok, output: r.output, providerId: 'browser' }
+      }
+      const fillMatch = low.match(/(?:fill|type|enter)\s+(?:the\s+)?(.+?)\s+with\s+(.+)/i)
+      if (fillMatch) {
+        const r = await browserFill({ field: fillMatch[1].trim(), value: fillMatch[2].trim() })
+        return { target: 'browser', ok: r.ok, output: r.output, providerId: 'browser' }
+      }
+      const clickMatch = low.match(/(?:click|press|tap)\s+(?:the\s+)?(.+)/i)
+      if (clickMatch) {
+        const r = await browserClick({ element: clickMatch[1].trim() })
+        return { target: 'browser', ok: r.ok, output: r.output, providerId: 'browser' }
+      }
+      if (task.params.url) {
+        const r = await browserOpen({ url: task.params.url })
+        return { target: 'browser', ok: r.ok, output: r.output, providerId: 'browser' }
+      }
+      return {
+        target: 'browser',
+        ok: false,
+        output:
+          'Browser automation is ready. Say "open <url>" to open a site, "read this page" to extract content, "fill the email field with ...", or "click the submit button".',
+        providerId: 'browser'
       }
     }
     default:

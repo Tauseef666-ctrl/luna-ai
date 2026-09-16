@@ -156,6 +156,7 @@ export type RouterTarget =
   | 'calendar'
   | 'clipboard'
   | 'email'
+  | 'browser'
   | 'chat'
 
 export interface RouteResult {
@@ -409,6 +410,18 @@ export interface CalendarEvent {
 
 export interface ClipboardPayload {
   text: string
+}
+
+export interface BrowserTabs {
+  label: string
+  url: string
+}
+
+export interface BrowserState {
+  open: boolean
+  url: string
+  title: string
+  tabs: BrowserTabs[]
 }
 
 export type RoutineKind = 'reminder' | 'routine'

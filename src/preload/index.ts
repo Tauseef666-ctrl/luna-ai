@@ -4,6 +4,7 @@ import type {
   ActivityEvent,
   AiSwitchPayload,
   AppState,
+  BrowserState,
   CalendarEvent,
   CharacterStatePayload,
   CharId,
@@ -113,6 +114,13 @@ export interface LunaBridge {
     read(): Promise<string>
     write(text: string): Promise<{ ok: boolean; reason?: string }>
   }
+  browser: {
+    state(): Promise<BrowserState>
+    open(url: string): Promise<{ ok: boolean; output: string }>
+    read(): Promise<{ ok: boolean; output: string }>
+    close(): Promise<{ ok: boolean; output: string }>
+  }
+  onBrowserState(cb: (p: BrowserState) => void): void
   context: {
     gather(projectDir?: string): Promise<CodingContext>
     block(projectDir?: string): Promise<string>
@@ -367,6 +375,15 @@ const bridge: LunaBridge = {
     enabled: () => ipcRenderer.invoke('clipboard:enabled'),
     read: () => ipcRenderer.invoke('clipboard:read'),
     write: (text) => ipcRenderer.invoke('clipboard:write', text)
+  },
+  browser: {
+    state: () => ipcRenderer.invoke('browser:state'),
+    open: (url) => ipcRenderer.invoke('browser:open', url),
+    read: () => ipcRenderer.invoke('browser:read'),
+    close: () => ipcRenderer.invoke('browser:close')
+  },
+  onBrowserState: (cb) => {
+    ipcRenderer.on('browser:state', (_e: IpcRendererEvent, p: BrowserState) => cb(p))
   },
   voice: {
     input: (text, language) => ipcRenderer.send('voice:input', { text, language }),
