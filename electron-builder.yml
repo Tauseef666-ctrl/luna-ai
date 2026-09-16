@@ -13,7 +13,7 @@ win:
     - nsis
     - portable
   executableName: LUNA
-  icon: resources/icon.png
+  icon: resources/icon.ico
 nsis:
   oneClick: false
   perMachine: false
