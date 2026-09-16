@@ -455,6 +455,44 @@ window.addEventListener('keyup', (e) => {
 
 $('btn-close').addEventListener('click', () => void window.luna.float.close())
 
+// ---------- text chat (works without mic/STT) ----------
+let floatChatPending = ''
+let floatChatActive = false
+
+window.luna.onChatToken((chunk) => {
+  if (!floatChatActive) return
+  floatChatPending += chunk
+  setSubtitle(floatChatPending)
+})
+
+$<HTMLFormElement>('float-chat-form').addEventListener('submit', (e) => {
+  e.preventDefault()
+  const input = $<HTMLInputElement>('float-chat-input')
+  const text = input.value.trim()
+  if (!text || floatChatActive) return
+  input.value = ''
+  floatChatPending = ''
+  floatChatActive = true
+  setSubtitle(`You: ${text}`)
+  setStatus('Thinking...')
+  charOf(activeAi).setState('waiting')
+  void window.luna
+    .sendChat(text)
+    .then((reply) => {
+      floatChatActive = false
+      floatChatPending = reply
+      setSubtitle(reply)
+      setStatus('Ready to assist...')
+      charOf(activeAi).setState('idle')
+    })
+    .catch((err) => {
+      floatChatActive = false
+      setSubtitle(`Error: ${err instanceof Error ? err.message : String(err)}`)
+      setStatus('Chat error')
+      charOf(activeAi).setState('idle')
+    })
+})
+
 // ---------- resize grip (bottom-right) ----------
 const resizeGrip = $('float-resize')
 let resizing = false

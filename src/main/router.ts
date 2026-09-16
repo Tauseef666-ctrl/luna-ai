@@ -125,7 +125,7 @@ const EMAIL_HINTS = [
   'send an email', 'draft a reply', 'draft an email', 'email draft', 'compose an email'
 ]
 
-function classify(text: string): RouterTask {
+export function classify(text: string): RouterTask {
   const t = text.toLowerCase()
   const isMemory = MEMORY_HINTS.some((h) => t.includes(h))
   const isDigest = DIGEST_HINTS.some((h) => t.includes(h))

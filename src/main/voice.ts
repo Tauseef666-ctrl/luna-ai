@@ -4,7 +4,7 @@ import * as path from 'node:path'
 import { loadConfig } from './config'
 import { activity } from './activity'
 import { setState } from './state'
-import { runChat } from './chat'
+import { runTaskOrChat } from './chat'
 import { transcribeWav, whisperAvailable } from './stt'
 import { findPiperExe, speakTo, stopTts, voiceSampleRate } from './tts'
 import type { TtsStatus } from '../shared/types'
@@ -44,7 +44,7 @@ export function registerVoiceHandlers(): void {
         if (result.text.trim()) {
           activity.log('voice', `Heard (${result.language}): ${result.text.slice(0, 120)}`)
           setState({ char: 'listening', status: 'Heard — thinking...', subtitle: result.text.slice(0, 160) })
-          const reply = await runChat(event.sender, result.text)
+          const reply = await runTaskOrChat(event.sender, result.text)
           setState({ char: 'idle', status: 'Ready to assist...', subtitle: reply.slice(0, 160) })
         } else {
           activity.log('voice', 'Voice heard — nothing transcribed')

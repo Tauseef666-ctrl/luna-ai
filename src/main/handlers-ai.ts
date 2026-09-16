@@ -16,7 +16,7 @@ import {
   setSecret,
   testConnection
 } from './providers'
-import { runChat } from './chat'
+import { runTaskOrChat } from './chat'
 import { listSkills, runSkill, setSkillEnabled } from './skills'
 import type { ProviderConfig, ShoyaRunResult } from '../shared/types'
 
@@ -177,5 +177,5 @@ export function registerAiHandlers(): void {
     return result
   })
 
-  ipcMain.handle('chat', (event, text: string) => runChat(event.sender, text))
+  ipcMain.handle('chat', (event, text: string) => runTaskOrChat(event.sender, text))
 }

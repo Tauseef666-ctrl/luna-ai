@@ -1971,6 +1971,16 @@ $<HTMLFormElement>('chat-form').addEventListener('submit', (e) => {
       $('chat-log').scrollTop = $('chat-log').scrollHeight
       pending = null
     })
+    .catch((err) => {
+      finalized = true
+      pending?.replaceChildren()
+      pending?.appendChild(label)
+      pending?.appendChild(
+        document.createTextNode(`Error: ${err instanceof Error ? err.message : String(err)}`)
+      )
+      $('chat-log').scrollTop = $('chat-log').scrollHeight
+      pending = null
+    })
 })
 
 $('btn-float').addEventListener('click', () => void luna().float.toggle())

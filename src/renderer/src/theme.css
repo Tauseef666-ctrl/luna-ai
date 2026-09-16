@@ -931,7 +931,7 @@ body {
 
 .float-subtitle {
   position: absolute;
-  bottom: 46px;
+  bottom: 82px;
   left: 14px;
   right: 14px;
   text-align: center;
@@ -942,6 +942,51 @@ body {
   border-radius: 8px;
   padding: 6px 10px;
   -webkit-app-region: no-drag;
+}
+
+.float-chat-form {
+  position: absolute;
+  bottom: 46px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  gap: 6px;
+  -webkit-app-region: no-drag;
+  z-index: 6;
+}
+
+.float-chat-form input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(20, 20, 31, 0.85);
+  color: var(--text-1);
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}
+
+.float-chat-form input:focus {
+  border-color: var(--luna-a);
+}
+
+.float-chat-form button {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(20, 20, 31, 0.85);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.18s var(--ease);
+}
+
+.float-chat-form button:hover {
+  color: var(--text-1);
+  border-color: var(--luna-a);
 }
 
 .float-toolbar {

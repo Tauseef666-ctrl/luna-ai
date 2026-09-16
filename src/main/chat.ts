@@ -7,7 +7,10 @@ import { activity } from './activity'
 import { loadConfig } from './config'
 import { setState } from './state'
 import { speakTo } from './tts'
-import type { LunaSession } from '../shared/types'
+import { classify, route as routeTask } from './router'
+import type { LunaSession, RouterTarget } from '../shared/types'
+
+const CONVERSATIONAL_TARGETS = new Set<RouterTarget>(['chat', 'luna-local', 'luna-online'])
 
 let currentSessionId = ''
 
@@ -24,6 +27,33 @@ export function ensureCurrentSession(): LunaSession {
     currentSessionId = sessions.create().id
   }
   return sessions.get(currentSessionId) as LunaSession
+}
+
+/**
+ * Unified entry point for a user message. Conversational messages go to the
+ * streaming local/online model path (session, memory, TTS). Anything the
+ * router classifies as a task (calendar, browser, reminder, skill, windows,
+ * vscode, shoya, ...) is executed through the router map and its output is
+ * streamed back as chat tokens + spoken, then recorded in the session.
+ */
+export async function runTaskOrChat(target: WebContents | null, text: string): Promise<string> {
+  const task = classify(text)
+  if (CONVERSATIONAL_TARGETS.has(task.target as RouterTarget)) {
+    return runChat(target, text)
+  }
+  setState({ char: 'thinking', status: `Working on: ${task.target}` })
+  activity.log('chat', `Routed "${text.slice(0, 60)}" → ${task.target} via router`)
+  const result = await routeTask(text)
+  setState({ char: result.ok ? 'success' : 'idle', status: result.ok ? 'Done' : 'Done (with issues)' })
+  if (target && !target.isDestroyed()) target.send('chat:token', result.output)
+  const c = loadConfig()
+  speakTo(target, result.output, c.character.luna.speaking)
+  const session = currentSessionId ? sessions.get(currentSessionId) : undefined
+  if (session) {
+    sessions.appendTurn(currentSessionId, 'user', text)
+    sessions.appendTurn(currentSessionId, 'assistant', result.output)
+  }
+  return result.output
 }
 
 export async function runChat(target: WebContents | null, text: string): Promise<string> {
