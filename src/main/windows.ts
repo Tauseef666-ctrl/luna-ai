@@ -43,7 +43,9 @@ export function createFloatWindow(): BrowserWindow {
     height: cfg.float.height || 520,
     frame: false,
     transparent: true,
-    resizable: true,
+    backgroundColor: '#00000000',
+    show: false,
+    resizable: false,
     alwaysOnTop: true,
     skipTaskbar: true,
     hasShadow: false,
@@ -56,6 +58,7 @@ export function createFloatWindow(): BrowserWindow {
       sandbox: false
     }
   })
+  win.once('ready-to-show', () => win.show())
   win.setAlwaysOnTop(true, 'floating')
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
   if (cfg.float.clickThrough) win.setIgnoreMouseEvents(true, { forward: true })
