@@ -6,6 +6,9 @@ out/
 dist/
 release/
 
+# ---- Stray temp copy of the electron runtime (accidental, remove after reboot) ----
+electron/
+
 # ---- Logs ----
 *.log
 npm-debug.log*
