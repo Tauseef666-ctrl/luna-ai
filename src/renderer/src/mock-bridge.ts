@@ -102,6 +102,11 @@ const SAMPLE_CONFIG: LunaConfig = {
       enabled: false,
       priority: 3
     }
+  },
+  skills: {
+    enabled: {
+      'todo-list': true
+    }
   }
 }
 
@@ -524,8 +529,31 @@ export const mockBridge: LunaBridge = {
       Promise.resolve({
         target: 'chat',
         ok: true,
-        output: `[Router mock] "${text.slice(0, 60)}" would be classified and sent to the best target (LUNA local, LUNA online, Shoya, Windows, VS Code, Memory or Research).`,
+        output: `[Router mock] "${text.slice(0, 60)}" would be classified and sent to the best target (LUNA local, LUNA online, Shoya, Windows, VS Code, Memory, Research or a Skill).`,
         providerId: 'router'
+      })
+  },
+  skills: {
+    list: () =>
+      Promise.resolve([
+        {
+          id: 'todo-list',
+          name: 'Todo list',
+          path: 'D:\\own-ai\\skills\\todo-list',
+          description: 'Append a task to the shared todo file when you say "add todo".',
+          triggers: ['add todo', 'add task', 'add to todo'],
+          permissionTier: 'safe',
+          enabled: true,
+          includeQuery: true
+        }
+      ]),
+    toggle: () => Promise.resolve(true),
+    run: (id, query) =>
+      Promise.resolve({
+        ok: true,
+        id,
+        name: 'Todo list',
+        output: `[Skill mock] "${id}" ran with query: ${(query ?? '').slice(0, 80)}. In the real build this executes the manifest's command and returns verified output.`
       })
   },
   context: {

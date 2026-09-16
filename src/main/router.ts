@@ -6,17 +6,8 @@ import { memory } from './memory'
 import { launchApp, openPath, openUrl, runCommand, listWindows, focusWindow } from './control'
 import { openInVSCode } from './vscode'
 import { activity } from './activity'
-
-export type RouterTarget =
-  | 'luna-local'
-  | 'luna-online'
-  | 'shoya'
-  | 'windows'
-  | 'vscode'
-  | 'file'
-  | 'memory'
-  | 'research'
-  | 'chat'
+import { listSkills, runSkill } from './skills'
+import type { RouteResult, RouterTarget } from '../shared/types'
 
 export interface RouterTask {
   target: RouterTarget
@@ -31,15 +22,9 @@ export interface RouterTask {
     url?: string
     providerId?: string
     model?: string
+    skillId?: string
     tier: 'safe' | 'confirm'
   }
-}
-
-export interface RouteResult {
-  target: RouterTarget
-  ok: boolean
-  output: string
-  providerId: string
 }
 
 const CODING_HINTS = [
@@ -125,6 +110,18 @@ function classify(text: string): RouterTask {
     return { target: 'windows', confidence: 0.8, reason: 'Window/app control detected', params: { prompt: text, tier: 'confirm' } }
   if (isResearch)
     return { target: 'research', confidence: 0.75, reason: 'Research/news intent', params: { query: text, tier: 'safe' } }
+
+  const skillMatch = listSkills().find(
+    (s) => s.enabled && s.triggers.some((tr) => tr && t.includes(tr.toLowerCase()))
+  )
+  if (skillMatch)
+    return {
+      target: 'skill',
+      confidence: 0.85,
+      reason: `Skill trigger "${skillMatch.name}" matched`,
+      params: { prompt: text, skillId: skillMatch.id, tier: skillMatch.permissionTier }
+    }
+
   if (isShoyaLike)
     return { target: 'shoya', confidence: 0.7, reason: 'Coding/technical keywords detected', params: { prompt: text, tier: 'safe' } }
   return { target: 'chat', confidence: 0.9, reason: 'General conversation', params: { prompt: text, tier: 'safe' } }
@@ -284,6 +281,12 @@ export async function route(text: string): Promise<RouteResult> {
         output: `Research request: "${task.params.query ?? text}". The research backend is being wired — for now ask LUNA via chat.`,
         providerId: 'research'
       }
+    case 'skill': {
+      if (!task.params.skillId)
+        return { target: 'skill', ok: false, output: 'No skill selected.', providerId: 'skill' }
+      const r = await runSkill(task.params.skillId, task.params.prompt ?? text)
+      return { target: 'skill', ok: r.ok, output: r.output, providerId: r.id }
+    }
     default:
       return lunaReply(text)
   }

@@ -26,6 +26,8 @@ import type {
   ScanResult,
   ShoyaDetection,
   ShoyaRunResult,
+  SkillInfo,
+  SkillRunResult,
   SubtitlePayload,
   TtsAudioPayload,
   TtsStatus,
@@ -73,6 +75,11 @@ export interface LunaBridge {
   }
   router: {
     route(text: string): Promise<RouteResult>
+  }
+  skills: {
+    list(): Promise<SkillInfo[]>
+    toggle(id: string, enabled: boolean): Promise<boolean>
+    run(id: string, query?: string): Promise<SkillRunResult>
   }
   context: {
     gather(projectDir?: string): Promise<CodingContext>
@@ -205,6 +212,11 @@ const bridge: LunaBridge = {
   },
   router: {
     route: (text) => ipcRenderer.invoke('router:route', text)
+  },
+  skills: {
+    list: () => ipcRenderer.invoke('skills:list'),
+    toggle: (id, enabled) => ipcRenderer.invoke('skills:toggle', id, enabled),
+    run: (id, query) => ipcRenderer.invoke('skills:run', id, query)
   },
   context: {
     gather: (projectDir) => ipcRenderer.invoke('context:gather', projectDir),

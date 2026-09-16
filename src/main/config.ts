@@ -101,6 +101,9 @@ const DEFAULTS: LunaConfig = {
       enabled: false,
       priority: 3
     }
+  },
+  skills: {
+    enabled: {}
   }
 }
 

@@ -53,6 +53,43 @@ export interface LunaConfig {
     hotkey: string
   }
   providers: Record<string, ProviderConfig>
+  skills: {
+    enabled: Record<string, boolean>
+  }
+}
+
+export type SkillTier = 'safe' | 'confirm'
+
+export interface SkillManifest {
+  name: string
+  description: string
+  triggers: string[]
+  permissionTier?: SkillTier
+  action: 'exec'
+  command: string
+  args?: string[]
+  cwd?: string
+  includeQuery?: boolean
+}
+
+export interface SkillInfo {
+  id: string
+  name: string
+  path: string
+  description: string
+  triggers: string[]
+  permissionTier: SkillTier
+  enabled: boolean
+  includeQuery: boolean
+}
+
+export interface SkillRunResult {
+  ok: boolean
+  id: string
+  name: string
+  output: string
+  error?: string
+  next?: string
 }
 
 export type ProviderKind = 'ollama' | 'gemini' | 'claude' | 'openai'
@@ -105,6 +142,7 @@ export type RouterTarget =
   | 'file'
   | 'memory'
   | 'research'
+  | 'skill'
   | 'chat'
 
 export interface RouteResult {

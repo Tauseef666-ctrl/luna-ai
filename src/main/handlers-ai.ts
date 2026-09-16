@@ -17,6 +17,7 @@ import {
   testConnection
 } from './providers'
 import { runChat } from './chat'
+import { listSkills, runSkill, setSkillEnabled } from './skills'
 import type { ProviderConfig, ShoyaRunResult } from '../shared/types'
 
 export function registerAiHandlers(): void {
@@ -127,6 +128,27 @@ export function registerAiHandlers(): void {
     activity.log(
       'router',
       `Routed "${text.slice(0, 60)}" → ${result.target} (${result.ok ? 'ok' : 'failed'})`
+    )
+    return result
+  })
+
+  ipcMain.handle('skills:list', () => listSkills())
+  ipcMain.handle('skills:toggle', (_e, id: string, enabled: boolean) => {
+    const ok = setSkillEnabled(id, enabled)
+    activity.log('skill', `Skill "${id}" ${enabled ? 'enabled' : 'disabled'}`)
+    return ok
+  })
+  ipcMain.handle('skills:run', async (_e, id: string, query?: string) => {
+    if (!id)
+      return { ok: false, id: '', name: '', output: 'No skill id given', error: 'missing id' }
+    setState({ char: 'working', status: `Running skill: ${id}` })
+    activity.log('skill', `Run skill: ${id}${query ? ` (${query.slice(0, 80)})` : ''}`)
+    const result = await runSkill(id, query)
+    setState({ char: result.ok ? 'success' : 'error', status: result.ok ? `${result.name} done` : `${result.name} failed` })
+    activity.log(
+      'skill',
+      `Skill "${id}" ${result.ok ? 'completed' : 'failed'}${result.error ? `: ${result.error}` : ''}`,
+      result.ok ? 'success' : 'error'
     )
     return result
   })

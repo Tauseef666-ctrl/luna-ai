@@ -13,7 +13,9 @@ import type {
   PermissionRequest,
   ProviderConfig,
   ProviderStatus,
-  ScanResult
+  ScanResult,
+  SkillInfo,
+  SkillRunResult
 } from '../../shared/types'
 import { mockBridge } from './mock-bridge'
 
@@ -1281,6 +1283,100 @@ function bindSel(id: string, apply: (v: string) => void): void {
   el.addEventListener('change', () => apply(el.value))
 }
 
+// ---------- skills (§32.6) ----------
+async function renderSkills(): Promise<void> {
+  const host = $('skills')
+  const head = document.createElement('h3')
+  head.textContent = 'Skills (spec 32.6)'
+  try {
+    const skills = await luna().skills.list()
+    if (skills.length === 0) {
+      const empty = document.createElement('div')
+      empty.className = 'empty-state'
+      empty.textContent = 'No skills installed. Drop a folder with a manifest.json into D:\\own-ai\\skills\\ to add one.'
+      host.replaceChildren(head, empty)
+      return
+    }
+    const ul = document.createElement('ul')
+    for (const s of skills) {
+      ul.appendChild(skillCard(s))
+    }
+    host.replaceChildren(head, ul)
+  } catch {
+    host.replaceChildren(head)
+  }
+}
+
+function skillCard(s: SkillInfo): HTMLElement {
+  const li = document.createElement('li')
+  li.className = 'provider-card glass'
+
+  const head = document.createElement('div')
+  head.className = 'ai-card-head'
+  const title = document.createElement('h4')
+  title.textContent = s.name
+  const badge = document.createElement('span')
+  badge.className = `session-badge ${s.enabled ? 'success' : ''}`
+  badge.textContent = s.permissionTier.toUpperCase()
+  head.append(title, badge)
+  li.appendChild(head)
+
+  const desc = document.createElement('p')
+  desc.className = 'sub'
+  desc.textContent = s.path
+  li.appendChild(desc)
+  if (s.description) {
+    const p = document.createElement('p')
+    p.textContent = s.description
+    li.appendChild(p)
+  }
+  if (s.triggers.length > 0) {
+    const tg = document.createElement('p')
+    tg.className = 'sub'
+    tg.textContent = `Triggers: ${s.triggers.join(', ')}`
+    li.appendChild(tg)
+  }
+
+  const row = document.createElement('div')
+  row.className = 'assign-row'
+
+  const enLabel = document.createElement('label')
+  const enSel = document.createElement('select')
+  for (const [v, t] of [
+    ['false', 'Off'],
+    ['true', 'On']
+  ] as const) {
+    const o = document.createElement('option')
+    o.value = v
+    o.textContent = t
+    if (String(s.enabled) === v) o.selected = true
+    enSel.appendChild(o)
+  }
+  enSel.value = String(s.enabled)
+  enSel.addEventListener('change', () => {
+    void luna().skills.toggle(s.id, enSel.value === 'true').then(() => {
+      badge.className = `session-badge ${enSel.value === 'true' ? 'success' : ''}`
+    })
+  })
+  enLabel.append('Enabled', enSel)
+
+  const runBtn = document.createElement('button')
+  runBtn.className = 'icon-btn'
+  runBtn.textContent = 'Run'
+  runBtn.addEventListener('click', () => {
+    const query = prompt(`Run skill "${s.name}${s.includeQuery ? ' — enter the query/payload' : ''}"`, '')
+    void luna()
+      .skills.run(s.id, query ?? undefined)
+      .then((r: SkillRunResult) => {
+        alert(`${r.ok ? 'Done' : 'Failed'}: ${r.output}${r.next ? `\n\nNext: ${r.next}` : ''}`)
+      })
+  })
+
+  row.append(enLabel, runBtn)
+  li.appendChild(row)
+  return li
+}
+
 function renderSettings(): void {
   void luna()
     .config.get()
@@ -1308,6 +1404,7 @@ function renderSettings(): void {
       $<HTMLSelectElement>('cfg-auto-confirm').value = String(c.automation?.confirm ?? true)
       $<HTMLSelectElement>('cfg-auto-proactive').value = String(c.automation?.proactive ?? false)
       void renderTtsStatus()
+      void renderSkills()
     })
 }
 
