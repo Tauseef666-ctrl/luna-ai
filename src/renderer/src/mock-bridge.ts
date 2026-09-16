@@ -26,6 +26,7 @@ import type {
 
 const MS = 1000
 const now = Date.now()
+let activeAiMock: 'luna' | 'shoya' = 'luna'
 
 const SAMPLE_STATE: AppState = {
   char: 'idle',
@@ -658,11 +659,16 @@ export const mockBridge: LunaBridge = {
         ]
       })
   },
-  sendChat: (text) =>
+sendChat: (text) =>
     new Promise<string>((resolve) => {
+      const agent = activeAiMock === 'shoya' ? 'Shoya (online companion)' : 'LUNA (offline companion)'
       const reply =
-        'That is a great question! In this design preview I run on a mock brain, but in the real app I use your local Ollama models — fully offline.\n\n' +
-        `You asked: “${text}”. Since this is just the visual demo, here is a sample answer so you can see the chat bubbles, streaming effect and layout in action.`
+        `That is a great question! I am ${agent}. In this design preview I run on a mock brain, but in the real app ${
+          activeAiMock === 'shoya'
+            ? 'I connect to your online API providers (Claude, Gemini, OpenAI-compatible) or the OpenCode CLI.'
+            : 'I use your local Ollama models — fully offline.'
+        }\n\n` +
+        `You asked: "${text}". Since this is just the visual demo, here is a sample answer so you can see the chat bubbles, streaming effect and layout in action.`
       pushTokens(reply)
       setTimeout(() => resolve(reply), 40 + (reply.length / 2) * 18)
     }),
@@ -826,6 +832,7 @@ export const mockBridge: LunaBridge = {
   },
   ai: {
     switch: (active) => {
+      activeAiMock = active
       aiSwitchListeners.forEach((cb) => cb({ active }))
     }
   },

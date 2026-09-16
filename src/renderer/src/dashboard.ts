@@ -134,7 +134,7 @@ function addMsg(who: 'user' | 'luna', text: string): void {
   el.className = `msg ${who}`
   const label = document.createElement('span')
   label.className = 'who'
-  label.textContent = who === 'user' ? 'You' : 'LUNA'
+  label.textContent = who === 'user' ? 'You' : activeAi === 'shoya' ? 'Shoya' : 'LUNA'
   el.appendChild(label)
   el.appendChild(document.createTextNode(text))
   log.appendChild(el)
@@ -1983,7 +1983,7 @@ $<HTMLFormElement>('chat-form').addEventListener('submit', (e) => {
   pending.className = 'msg luna thinking'
   const label = document.createElement('span')
   label.className = 'who'
-  label.textContent = 'LUNA'
+  label.textContent = activeAi === 'shoya' ? 'Shoya' : 'LUNA'
   pending.appendChild(label)
   $('chat-log').appendChild(pending)
   finalized = false

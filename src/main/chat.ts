@@ -8,9 +8,14 @@ import { loadConfig } from './config'
 import { setState } from './state'
 import { speakTo } from './tts'
 import { classify, route as routeTask } from './router'
-import type { LunaSession, RouterTarget } from '../shared/types'
+import { runShoya } from './shoya'
+import type { CharId, LunaSession, RouterTarget } from '../shared/types'
 
 const CONVERSATIONAL_TARGETS = new Set<RouterTarget>(['chat', 'luna-local', 'luna-online'])
+
+function activeCharId(): CharId {
+  return loadConfig().activeAi === 'shoya' ? 'shoya' : 'luna'
+}
 
 let currentSessionId = ''
 
@@ -47,7 +52,7 @@ export async function runTaskOrChat(target: WebContents | null, text: string): P
   setState({ char: result.ok ? 'success' : 'idle', status: result.ok ? 'Done' : 'Done (with issues)' })
   if (target && !target.isDestroyed()) target.send('chat:token', result.output)
   const c = loadConfig()
-  speakTo(target, result.output, c.character.luna.speaking)
+  speakTo(target, result.output, c.character[activeCharId()].speaking)
   const session = currentSessionId ? sessions.get(currentSessionId) : undefined
   if (session) {
     sessions.appendTurn(currentSessionId, 'user', text)
@@ -57,6 +62,10 @@ export async function runTaskOrChat(target: WebContents | null, text: string): P
 }
 
 export async function runChat(target: WebContents | null, text: string): Promise<string> {
+  return activeCharId() === 'shoya' ? runChatShoya(target, text) : runChatLuna(target, text)
+}
+
+async function runChatLuna(target: WebContents | null, text: string): Promise<string> {
   const c = loadConfig()
   setState({ char: 'thinking', status: 'Thinking...' })
   try {
@@ -135,6 +144,68 @@ export async function runChat(target: WebContents | null, text: string): Promise
     activity.log('chat', `Chat error: ${(err as Error).message}`, 'error')
     setState({ char: 'idle', status: 'Chat error' })
     return `Error: ${(err as Error).message}`
+  }
+}
+
+async function runChatShoya(target: WebContents | null, text: string): Promise<string> {
+  const c = loadConfig()
+  const online = enabledProviders().filter((p) => p.kind !== 'ollama')
+  if (online.length === 0) {
+    setState({ char: 'idle', status: 'Offline — no online provider for Shoya' })
+    return 'Shoya is the online companion. Add an API provider in Settings → AI Models (Claude, Gemini, OpenAI-compatible) or install the OpenCode CLI to chat with Shoya.'
+  }
+  const p = online[0]
+  const session = currentSessionId ? sessions.get(currentSessionId) : undefined
+  const recall = memory.recall(text)
+  const projectNotes = memory.projectContext(c.activeProject)
+  const parts = [c.chat.systemPrompt.replace('LUNA', 'Shoya')]
+  if (c.activeProject && projectNotes) {
+    parts.push(`Active project: ${c.activeProject}\nProject notes:\n${projectNotes}`)
+  } else if (c.activeProject) {
+    parts.push(`Active project: ${c.activeProject}`)
+  }
+  if (recall) parts.push(`Relevant memories from earlier conversations:\n${recall}`)
+  const history: ChatMessage[] = [{ role: 'system', content: parts.join('\n\n') }]
+  const turns = session ? session.turns.slice(-12) : []
+  for (const t of turns) history.push({ role: t.role, content: t.content })
+  history.push({ role: 'user', content: text })
+  if (session) sessions.appendTurn(currentSessionId, 'user', text)
+  setState({ char: 'thinking', status: 'Shoya thinking...', activeModel: p.label })
+  activity.log('chat', `Shoya message to provider ${p.id} (session ${currentSessionId.slice(0, 8)})`)
+  try {
+    const reply = await providerChatStream(
+      p,
+      history,
+      { temperature: c.chat.temperature, maxTokens: c.chat.maxTokens },
+      (chunk) => {
+        if (target && !target.isDestroyed()) target.send('chat:token', chunk)
+      }
+    )
+    if (session) sessions.appendTurn(currentSessionId, 'assistant', reply)
+    setState({ char: 'idle', status: 'Ready to assist...', activeModel: p.label })
+    speakTo(target, reply, c.character.shoya.speaking)
+    return reply
+  } catch (err) {
+    activity.log('chat', `Shoya provider ${p.id} error: ${(err as Error).message}`, 'error')
+    activity.log('chat', 'Shoya falling back to OpenCode CLI')
+    try {
+      const r = await runShoya(text, {
+        maxOutputChars: c.chat.maxTokens * 2,
+        providerId: p.id
+      })
+      if (r.ok) {
+        if (session) sessions.appendTurn(currentSessionId, 'assistant', r.output)
+        setState({ char: 'idle', status: 'Ready to assist...', activeModel: r.providerId })
+        if (target && !target.isDestroyed()) target.send('chat:token', r.output)
+        speakTo(target, r.output, c.character.shoya.speaking)
+        return r.output
+      }
+      return r.output
+    } catch (err2) {
+      activity.log('chat', `Shoya OpenCode error: ${(err2 as Error).message}`, 'error')
+      setState({ char: 'idle', status: 'Chat error' })
+      return `Error: ${(err2 as Error).message}`
+    }
   }
 }
 

@@ -63,7 +63,7 @@ export function registerVoiceHandlers(): void {
                 if (!win.isDestroyed()) win.webContents.send('chat:token', notice)
               }
               setState({ char: 'idle', status: 'Voice not recognized', subtitle: notice.slice(0, 160) })
-              speakTo(event.sender, notice, c.character.luna.speaking)
+              speakTo(event.sender, notice, c.character[c.activeAi === 'shoya' ? 'shoya' : 'luna'].speaking)
               return
             }
             setState({ char: 'listening', status: 'Heard — thinking...', subtitle: result.text.slice(0, 160) })
@@ -115,17 +115,18 @@ export function registerVoiceHandlers(): void {
   ipcMain.handle('tts:status', (): TtsStatus => {
     const c = loadConfig()
     const available = !!findPiperExe(c.aiRoot)
+    const speaking = c.character[c.activeAi === 'shoya' ? 'shoya' : 'luna'].speaking || c.character.luna.speaking
     return {
       available,
       engine: available ? 'piper' : 'none',
-      voice: c.character.luna.speaking,
-      sampleRate: voiceSampleRate(c.aiRoot, c.character.luna.speaking || 'en_US-amy-medium'),
+      voice: speaking,
+      sampleRate: voiceSampleRate(c.aiRoot, speaking || 'en_US-amy-medium'),
       settings: { ...c.tts }
     }
   })
   ipcMain.handle('tts:speak', (event, text: string, voice?: string) => {
     const c = loadConfig()
-    speakTo(event.sender, text, voice || c.character.luna.speaking)
+    speakTo(event.sender, text, voice || c.character[c.activeAi === 'shoya' ? 'shoya' : 'luna'].speaking || c.character.luna.speaking)
   })
   ipcMain.handle('tts:stop', () => {
     stopTts()
