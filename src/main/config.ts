@@ -60,6 +60,9 @@ const DEFAULTS: LunaConfig = {
     enabled: false,
     guest: false
   },
+  clipboard: {
+    enabled: false
+  },
   background: {
     startWithWindows: false,
     startMinimized: false,

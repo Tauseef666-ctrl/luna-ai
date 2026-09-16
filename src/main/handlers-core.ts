@@ -16,6 +16,8 @@ import {
 } from './ui'
 import { ensureCurrentSession, getCurrentSessionId, setCurrentSessionId } from './chat'
 import { addRoutine, listRoutines, removeRoutine, toggleRoutine } from './routines'
+import { addEvent, listEvents, listUpcoming, parseWhen, removeEvent, updateEvent } from './calendar'
+import { isClipboardEnabled, readClipboard, writeClipboard } from './clipboard'
 import type {
   ActivityEvent,
   LunaSession,
@@ -75,6 +77,21 @@ export function registerCoreHandlers(): void {
   ipcMain.handle('routines:add', (_e, input: Parameters<typeof addRoutine>[0]) => addRoutine(input))
   ipcMain.handle('routines:remove', (_e, id: string) => removeRoutine(id))
   ipcMain.handle('routines:toggle', (_e, id: string, enabled: boolean) => toggleRoutine(id, enabled))
+
+  ipcMain.handle('calendar:list', (_e, from?: number, to?: number) =>
+    listEvents(Math.min(from ?? Date.now(), Date.now()), to)
+  )
+  ipcMain.handle('calendar:upcoming', (_e, limit?: number) => listUpcoming(limit))
+  ipcMain.handle('calendar:add', (_e, input: Parameters<typeof addEvent>[0]) => addEvent(input))
+  ipcMain.handle('calendar:update', (_e, id: string, patch: Parameters<typeof updateEvent>[1]) =>
+    updateEvent(id, patch)
+  )
+  ipcMain.handle('calendar:remove', (_e, id: string) => removeEvent(id))
+  ipcMain.handle('calendar:parseWhen', (_e, text: string) => parseWhen(text))
+
+  ipcMain.handle('clipboard:enabled', () => isClipboardEnabled())
+  ipcMain.handle('clipboard:read', () => readClipboard())
+  ipcMain.handle('clipboard:write', (_e, text: string) => writeClipboard(text))
 
   ipcMain.handle('sessions:list', (): LunaSession[] => sessions.list())
   ipcMain.handle('sessions:current', (): LunaSession => ensureCurrentSession())

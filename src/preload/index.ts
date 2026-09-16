@@ -4,6 +4,7 @@ import type {
   ActivityEvent,
   AiSwitchPayload,
   AppState,
+  CalendarEvent,
   CharacterStatePayload,
   CharId,
   CharState,
@@ -94,6 +95,24 @@ export interface LunaBridge {
     toggle(id: string, enabled: boolean): Promise<Routine | null>
   }
   onProactiveRoutine(cb: (p: RoutinePayload) => void): void
+  calendar: {
+    list(from?: number, to?: number): Promise<CalendarEvent[]>
+    upcoming(limit?: number): Promise<CalendarEvent[]>
+    add(input: {
+      title: string
+      start: number
+      end?: number
+      notes?: string
+    }): Promise<CalendarEvent | null>
+    update(id: string, patch: Partial<Omit<CalendarEvent, 'id' | 'createdAt'>>): Promise<CalendarEvent | null>
+    remove(id: string): Promise<boolean>
+    parseWhen(text: string): Promise<number | null>
+  }
+  clipboard: {
+    enabled(): Promise<boolean>
+    read(): Promise<string>
+    write(text: string): Promise<{ ok: boolean; reason?: string }>
+  }
   context: {
     gather(projectDir?: string): Promise<CodingContext>
     block(projectDir?: string): Promise<string>
@@ -335,6 +354,19 @@ const bridge: LunaBridge = {
   },
   onProactiveRoutine: (cb) => {
     ipcRenderer.on('proactive:routine', (_e: IpcRendererEvent, p: RoutinePayload) => cb(p))
+  },
+  calendar: {
+    list: (from, to) => ipcRenderer.invoke('calendar:list', from, to),
+    upcoming: (limit) => ipcRenderer.invoke('calendar:upcoming', limit),
+    add: (input) => ipcRenderer.invoke('calendar:add', input),
+    update: (id, patch) => ipcRenderer.invoke('calendar:update', id, patch),
+    remove: (id) => ipcRenderer.invoke('calendar:remove', id),
+    parseWhen: (text) => ipcRenderer.invoke('calendar:parseWhen', text)
+  },
+  clipboard: {
+    enabled: () => ipcRenderer.invoke('clipboard:enabled'),
+    read: () => ipcRenderer.invoke('clipboard:read'),
+    write: (text) => ipcRenderer.invoke('clipboard:write', text)
   },
   voice: {
     input: (text, language) => ipcRenderer.send('voice:input', { text, language }),

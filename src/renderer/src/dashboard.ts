@@ -6,6 +6,7 @@ import type {
   ActivityEvent,
   AppState,
   Asset,
+  CalendarEvent,
   CharId,
   DigestPayload,
   MemoryEntry,
@@ -1463,6 +1464,67 @@ function showProactive(p: RoutinePayload): void {
 
 luna().onProactiveRoutine(showProactive)
 
+// ---------- calendar (§32.2) ----------
+async function renderCalendar(): Promise<void> {
+  const host = $('calendar')
+  const addForm = document.createElement('div')
+  addForm.className = 'assign-row'
+  const titleInput = document.createElement('input')
+  titleInput.type = 'text'
+  titleInput.placeholder = 'Event title, e.g. "Standup"'
+  const whenInput = document.createElement('input')
+  whenInput.type = 'text'
+  whenInput.placeholder = 'When, e.g. "today at 3pm"'
+  const addBtn = document.createElement('button')
+  addBtn.className = 'icon-btn'
+  addBtn.textContent = 'Add'
+  addBtn.addEventListener('click', () => {
+    void (async () => {
+      const when = await luna().calendar.parseWhen(whenInput.value)
+      if (!when || !titleInput.value.trim()) {
+        toast('Give a title and a recognizable "when" (today at 3pm, tomorrow, next monday...).', 'error')
+        return
+      }
+      await luna().calendar.add({ title: titleInput.value.trim(), start: when })
+      titleInput.value = ''
+      whenInput.value = ''
+      void renderCalendar()
+    })()
+  })
+  addForm.append(titleInput, whenInput, addBtn)
+
+  try {
+    const list = await luna().calendar.upcoming(8)
+    const ul = document.createElement('ul')
+    if (list.length === 0) {
+      const empty = document.createElement('li')
+      empty.className = 'empty-state'
+      empty.textContent = 'Nothing upcoming.'
+      ul.appendChild(empty)
+    } else {
+      for (const e of list) {
+        const li = document.createElement('li')
+        li.className = 'provider-card glass'
+        const t = document.createElement('span')
+        t.textContent = `${new Date(e.start).toLocaleString()} · ${e.title}`
+        li.appendChild(t)
+        const del = document.createElement('button')
+        del.className = 'icon-btn'
+        del.textContent = '✕'
+        del.title = 'Remove event'
+        del.addEventListener('click', () => {
+          void luna().calendar.remove(e.id).then(() => void renderCalendar())
+        })
+        li.appendChild(del)
+        ul.appendChild(li)
+      }
+    }
+    host.replaceChildren(addForm, ul)
+  } catch {
+    host.replaceChildren(addForm)
+  }
+}
+
 function renderSettings(): void {
   void luna()
     .config.get()
@@ -1492,8 +1554,10 @@ function renderSettings(): void {
       $<HTMLSelectElement>('cfg-digest').value = String(c.digest?.enabled ?? true)
       $<HTMLInputElement>('cfg-quiet-start').value = c.automation?.quietStart ?? ''
       $<HTMLInputElement>('cfg-quiet-end').value = c.automation?.quietEnd ?? ''
+      $<HTMLSelectElement>('cfg-clipboard').value = String(c.clipboard?.enabled ?? false)
       void renderTtsStatus()
       void renderRoutines()
+      void renderCalendar()
       void renderSkills()
     })
 }
@@ -1665,6 +1729,11 @@ function bindSettings(): void {
       .then((c) =>
         luna().config.set({ ...c, automation: { ...c.automation, quietEnd: (e.target as HTMLInputElement).value } })
       )
+  })
+  $<HTMLSelectElement>('cfg-clipboard').addEventListener('change', () => {
+    void luna()
+      .config.get()
+      .then((c) => luna().config.set({ ...c, clipboard: { ...c.clipboard, enabled: $<HTMLSelectElement>('cfg-clipboard').value === 'true' } }))
   })
 }
 

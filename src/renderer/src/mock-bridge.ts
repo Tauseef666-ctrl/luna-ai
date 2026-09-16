@@ -3,6 +3,7 @@ import type {
   ActivityEvent,
   AiSwitchPayload,
   AppState,
+  CalendarEvent,
   CharacterStatePayload,
   CodingContext,
   DigestPayload,
@@ -59,6 +60,7 @@ const SAMPLE_CONFIG: LunaConfig = {
   digest: { enabled: true },
   memory: { sessionDays: 7, autoSave: false, askBeforeDelete: true },
   voiceId: { enabled: false, guest: false },
+  clipboard: { enabled: false },
   background: {
     startWithWindows: false,
     startMinimized: false,
@@ -578,6 +580,32 @@ export const mockBridge: LunaBridge = {
     setTimeout(() => {
       cb({ id: 'mock-routine', kind: 'reminder', text: 'Reminder: push the build in 2 hours', quiet: false } as RoutinePayload)
     }, 1200)
+  },
+  calendar: {
+    list: (from, to) =>
+      Promise.resolve(
+        [
+          { id: 'ev-1', title: 'Standup', start: now + 24 * 3600000, createdAt: now },
+          { id: 'ev-2', title: 'Design review', start: now + 2 * 24 * 3600000, createdAt: now }
+        ].filter((e) => e.start >= (from ?? 0) && (to === undefined || e.start <= to)) as CalendarEvent[]
+      ),
+    upcoming: (limit = 10) =>
+      Promise.resolve(
+        [
+          { id: 'ev-1', title: 'Standup', start: now + 24 * 3600000, createdAt: now },
+          { id: 'ev-2', title: 'Design review', start: now + 2 * 24 * 3600000, createdAt: now }
+        ].slice(0, limit) as CalendarEvent[]
+      ),
+    add: (input) =>
+      Promise.resolve({ id: 'mock-ev', title: input.title, start: input.start, end: input.end, notes: input.notes, createdAt: now }),
+    update: () => Promise.resolve({ id: 'mock-ev', title: 'Updated', start: now, createdAt: now }),
+    remove: () => Promise.resolve(true),
+    parseWhen: () => Promise.resolve(now + 3600000)
+  },
+  clipboard: {
+    enabled: () => Promise.resolve(SAMPLE_CONFIG.clipboard.enabled),
+    read: () => Promise.resolve('[Clipboard mock] text copied from the real system clipboard.'),
+    write: () => Promise.resolve({ ok: true })
   },
   context: {
     gather: () =>

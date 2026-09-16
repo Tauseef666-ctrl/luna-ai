@@ -52,6 +52,9 @@ export interface LunaConfig {
     enabled: boolean
     guest: boolean
   }
+  clipboard: {
+    enabled: boolean
+  }
   background: {
     startWithWindows: boolean
     startMinimized: boolean
@@ -150,6 +153,9 @@ export type RouterTarget =
   | 'skill'
   | 'digest'
   | 'routine'
+  | 'calendar'
+  | 'clipboard'
+  | 'email'
   | 'chat'
 
 export interface RouteResult {
@@ -390,6 +396,19 @@ export interface DigestItem {
 export interface DigestPayload {
   summary: string
   items: DigestItem[]
+}
+
+export interface CalendarEvent {
+  id: string
+  title: string
+  start: number
+  end?: number
+  notes?: string
+  createdAt: number
+}
+
+export interface ClipboardPayload {
+  text: string
 }
 
 export type RoutineKind = 'reminder' | 'routine'

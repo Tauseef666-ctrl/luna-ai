@@ -9,6 +9,9 @@ import { activity } from './activity'
 import { listSkills, runSkill } from './skills'
 import { emitDigest } from './digest'
 import { addRoutine, parseRoutine } from './routines'
+import { addEvent, listUpcoming, parseWhen } from './calendar'
+import { readClipboardSafe, writeClipboard } from './clipboard'
+import { requestPermission } from './permission'
 import type { RouteResult, RouterTarget } from '../shared/types'
 
 export interface RouterTask {
@@ -88,10 +91,22 @@ const DIGEST_HINTS = ['what did i miss', 'what missed', 'catch me up', 'digest',
 
 const REMINDER_HINTS = ['remind me', 'reminder', 'remind ', 'set a reminder', 'in 2 hours', 'in an hour', 'every weekday', 'every morning', 'every day at', 'daily at']
 
+const CALENDAR_HINTS = ['calendar', 'schedule', 'event on', 'add an event', 'add event', 'appointment', 'what do i have', 'agenda', 'upcoming events', 'next event', 'on my calendar']
+
+const CLIPBOARD_HINTS = ['clipboard', 'something i copied', 'what i copied', 'what did i copy', 'copy that for me', 'copy this', 'put on the clipboard', 'paste']
+
+const EMAIL_HINTS = [
+  'check email', 'check my email', 'inbox', 'read email', 'summarize my email', 'any new email',
+  'send an email', 'draft a reply', 'draft an email', 'email draft', 'compose an email'
+]
+
 function classify(text: string): RouterTask {
   const t = text.toLowerCase()
   const isMemory = MEMORY_HINTS.some((h) => t.includes(h))
   const isDigest = DIGEST_HINTS.some((h) => t.includes(h))
+  const isCalendar = CALENDAR_HINTS.some((h) => t.includes(h))
+  const isClipboard = CLIPBOARD_HINTS.some((h) => t.includes(h))
+  const isEmail = EMAIL_HINTS.some((h) => t.includes(h))
   const isShoyaLike =
     t.includes('shoya') ||
     CODING_HINTS.filter((h) => h !== 'shoya').some((h) => t.includes(h))
@@ -114,6 +129,12 @@ function classify(text: string): RouterTask {
     return { target: 'routine', confidence: 0.9, reason: 'Reminder intent detected', params: { prompt: text, tier: 'safe' } }
   if (isDigest)
     return { target: 'digest', confidence: 0.9, reason: 'What did I miss intent', params: { prompt: text, tier: 'safe' } }
+  if (isCalendar)
+    return { target: 'calendar', confidence: 0.85, reason: 'Calendar intent detected', params: { prompt: text, tier: 'safe' } }
+  if (isClipboard)
+    return { target: 'clipboard', confidence: 0.85, reason: 'Clipboard intent detected', params: { prompt: text, tier: 'safe' } }
+  if (isEmail)
+    return { target: 'email', confidence: 0.85, reason: 'Email intent detected', params: { prompt: text, tier: 'safe' } }
   if (isVscode)
     return { target: 'vscode', confidence: 0.85, reason: 'VS Code workspace intent', params: { prompt: text, tier: 'safe' } }
   if (isUrl)
@@ -332,6 +353,105 @@ export async function route(text: string): Promise<RouteResult> {
         ok: true,
         output: `Reminder set: "${r.text}" (${when}). I'll ping you when it fires.`,
         providerId: 'routine'
+      }
+    }
+    case 'calendar': {
+      const q = task.params.prompt ?? text
+      const low = q.toLowerCase()
+      const isAdd = /add\s+(an\s+)?(event|appointment|meeting)|schedule\s+(a\s+)?(event|meeting|appointment)/.test(low)
+      if (isAdd) {
+        const stripped = q.replace(/^(please\s+)?(add\s+(an\s+)?(event|appointment)|add\s+meeting|schedule\s+(a\s+)?(event|meeting))\s+/i, '').trim()
+        // Split title from "when" on time prepositions; the first segment is the title.
+        const split = stripped.match(/^(.*?)\s+(?:at|on|for)\s+(.+)$/i)
+        if (split) {
+          const title = split[1].trim()
+          const when = parseWhen(split[2].trim())
+          if (when !== null && title) {
+            const approved = await requestPermission({
+              action: `Add calendar event "${title}" (${new Date(when).toLocaleString()})`,
+              tier: 'confirm'
+            })
+            if (!approved)
+              return {
+                target: 'calendar',
+                ok: false,
+                output: 'Calendar event not added — you declined the confirmation.',
+                providerId: 'calendar'
+              }
+            const ev = addEvent({ title, start: when })
+            if (ev)
+              return {
+                target: 'calendar',
+                ok: true,
+                output: `Added "${title}" to the calendar (${new Date(when).toLocaleString()}).`,
+                providerId: 'calendar'
+              }
+          }
+        }
+        return {
+          target: 'calendar',
+          ok: false,
+          output:
+            'To add an event, phrase it like: "add event meeting with design at 3pm tomorrow" or "schedule a call on friday at 10am".',
+          providerId: 'calendar'
+        }
+      }
+      const upcoming = listUpcoming(8)
+      if (upcoming.length === 0)
+        return {
+          target: 'calendar',
+          ok: true,
+          output: 'Your calendar is clear — nothing upcoming.',
+          providerId: 'calendar'
+        }
+      const lines = upcoming.map((e) => `- ${new Date(e.start).toLocaleString()} · ${e.title}`).join('\n')
+      return { target: 'calendar', ok: true, output: `Upcoming:\n${lines}`, providerId: 'calendar' }
+    }
+    case 'clipboard': {
+      const q = task.params.prompt ?? text
+      const low = q.toLowerCase()
+      const isWrite = /copy\s+(this|that)\s+for\s+me|put\s+.*\s+on\s+the\s+clipboard|copy\s+(this|that)/.test(low)
+      if (isWrite) {
+        const approved = await requestPermission({
+          action: `Copy "${q}" to the clipboard`,
+          tier: 'confirm'
+        })
+        if (!approved)
+          return { target: 'clipboard', ok: false, output: 'Clipboard write declined.', providerId: 'clipboard' }
+        const w = writeClipboard(q)
+        return {
+          target: 'clipboard',
+          ok: w.ok,
+          output: w.ok ? 'Copied to the clipboard.' : w.reason ?? 'Could not copy.',
+          providerId: 'clipboard'
+        }
+      }
+      const r = readClipboardSafe()
+      return {
+        target: 'clipboard',
+        ok: r.ok,
+        output: r.ok ? `Clipboard contents:\n\n${r.text.slice(0, 800)}` : r.reason ?? 'Clipboard is empty.',
+        providerId: 'clipboard'
+      }
+    }
+    case 'email': {
+      const q = task.params.prompt ?? text
+      const low = q.toLowerCase()
+      const isDraft = /draft\s+(a\s+)?(reply|email)|compose\s+an?\s+email/.test(low)
+      if (isDraft)
+        return {
+          target: 'email',
+          ok: true,
+          output:
+            'I can help you draft a reply, but no email account is connected yet. Say "draft a reply to [person] about [topic]" and I will compose it for your review — I never send email without your confirmation. A mail account integration is planned (Settings → AI Models).',
+          providerId: 'email'
+        }
+      return {
+        target: 'email',
+        ok: false,
+        output:
+          'No mailbox is connected yet, so I cannot read your inbox. Hook up an email account in Settings → AI Models when the mail integration lands; drafts and send will always require your confirmation first.',
+        providerId: 'email'
       }
     }
     default:
