@@ -54,6 +54,7 @@ const SAMPLE_CONFIG: LunaConfig = {
   voice: { language: 'en', micDevice: '', mode: 'ptt', sensitivity: 0.5 },
   float: { width: 360, height: 520, clickThrough: false, opacity: 1 },
   automation: { confirm: true, proactive: false },
+  digest: { enabled: true },
   memory: { sessionDays: 7, autoSave: false, askBeforeDelete: true },
   voiceId: { enabled: false, guest: false },
   background: {
@@ -529,7 +530,7 @@ export const mockBridge: LunaBridge = {
       Promise.resolve({
         target: 'chat',
         ok: true,
-        output: `[Router mock] "${text.slice(0, 60)}" would be classified and sent to the best target (LUNA local, LUNA online, Shoya, Windows, VS Code, Memory, Research or a Skill).`,
+        output: `[Router mock] "${text.slice(0, 60)}" would be classified and sent to the best target (LUNA local, LUNA online, Shoya, Windows, VS Code, Memory, Research, Digest or a Skill).`,
         providerId: 'router'
       })
   },

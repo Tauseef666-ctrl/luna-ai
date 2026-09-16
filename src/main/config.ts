@@ -46,6 +46,9 @@ const DEFAULTS: LunaConfig = {
     confirm: true,
     proactive: false
   },
+  digest: {
+    enabled: true
+  },
   memory: {
     sessionDays: 7,
     autoSave: false,

@@ -7,6 +7,7 @@ import { launchApp, openPath, openUrl, runCommand, listWindows, focusWindow } fr
 import { openInVSCode } from './vscode'
 import { activity } from './activity'
 import { listSkills, runSkill } from './skills'
+import { emitDigest } from './digest'
 import type { RouteResult, RouterTarget } from '../shared/types'
 
 export interface RouterTask {
@@ -82,9 +83,12 @@ const RESEARCH_HINTS = ['search', 'research', 'news', 'find out', 'look up', 'wh
 
 const URL_HINTS = ['open website', 'browse', 'go to https://', 'open http', 'website']
 
+const DIGEST_HINTS = ['what did i miss', 'what missed', 'catch me up', 'digest', 'anything new', 'anything since', 'what happened while', 'miss anything', 'missed anything']
+
 function classify(text: string): RouterTask {
   const t = text.toLowerCase()
   const isMemory = MEMORY_HINTS.some((h) => t.includes(h))
+  const isDigest = DIGEST_HINTS.some((h) => t.includes(h))
   const isShoyaLike =
     t.includes('shoya') ||
     CODING_HINTS.filter((h) => h !== 'shoya').some((h) => t.includes(h))
@@ -102,6 +106,8 @@ function classify(text: string): RouterTask {
     return { target: 'memory', confidence: 0.9, reason: 'Memory intent detected', params: { prompt: text, tier: 'safe' } }
   if (isCommand)
     return { target: 'windows', confidence: 0.95, reason: 'Direct command request', params: { command: text, tier: 'confirm' } }
+  if (isDigest)
+    return { target: 'digest', confidence: 0.9, reason: 'What did I miss intent', params: { prompt: text, tier: 'safe' } }
   if (isVscode)
     return { target: 'vscode', confidence: 0.85, reason: 'VS Code workspace intent', params: { prompt: text, tier: 'safe' } }
   if (isUrl)
@@ -286,6 +292,19 @@ export async function route(text: string): Promise<RouteResult> {
         return { target: 'skill', ok: false, output: 'No skill selected.', providerId: 'skill' }
       const r = await runSkill(task.params.skillId, task.params.prompt ?? text)
       return { target: 'skill', ok: r.ok, output: r.output, providerId: r.id }
+    }
+    case 'digest': {
+      const force = true
+      const p = emitDigest(force)
+      if (!p)
+        return {
+          target: 'digest',
+          ok: true,
+          output: 'Nothing significant while you were away — the activity log is quiet.',
+          providerId: 'digest'
+        }
+      const lines = p.items.map((it) => `- ${it.title}`).join('\n')
+      return { target: 'digest', ok: true, output: `${p.summary}\n${lines}`, providerId: 'digest' }
     }
     default:
       return lunaReply(text)

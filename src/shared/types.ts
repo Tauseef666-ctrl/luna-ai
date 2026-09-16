@@ -38,6 +38,9 @@ export interface LunaConfig {
     confirm: boolean
     proactive: boolean
   }
+  digest: {
+    enabled: boolean
+  }
   memory: {
     sessionDays: number
     autoSave: boolean
@@ -143,6 +146,7 @@ export type RouterTarget =
   | 'memory'
   | 'research'
   | 'skill'
+  | 'digest'
   | 'chat'
 
 export interface RouteResult {

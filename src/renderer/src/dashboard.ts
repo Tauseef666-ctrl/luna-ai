@@ -1403,6 +1403,7 @@ function renderSettings(): void {
       $<HTMLSelectElement>('cfg-mem-ask').value = String(c.memory?.askBeforeDelete ?? true)
       $<HTMLSelectElement>('cfg-auto-confirm').value = String(c.automation?.confirm ?? true)
       $<HTMLSelectElement>('cfg-auto-proactive').value = String(c.automation?.proactive ?? false)
+      $<HTMLSelectElement>('cfg-digest').value = String(c.digest?.enabled ?? true)
       void renderTtsStatus()
       void renderSkills()
     })
@@ -1556,6 +1557,11 @@ function bindSettings(): void {
     void luna()
       .config.get()
       .then((c) => luna().config.set({ ...c, automation: { ...c.automation, proactive: v === 'true' } }))
+  })
+  bindSel('cfg-digest', (v) => {
+    void luna()
+      .config.get()
+      .then((c) => luna().config.set({ ...c, digest: { ...c.digest, enabled: v === 'true' } }))
   })
 }
 
