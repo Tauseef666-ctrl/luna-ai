@@ -5,15 +5,6 @@ import { safeBinary, safeImageDataUrl } from './assets'
 import { createProject, deleteProject, listProjects, renameProject } from './projects'
 import { memory, sessions } from './memory'
 import { activity } from './activity'
-import {
-  closeFloat,
-  openFloat,
-  repositionFloat,
-  resizeFloat,
-  setFloatAlwaysOnTop,
-  setFloatClickThrough,
-  toggleFloat
-} from './ui'
 import { ensureCurrentSession, getCurrentSessionId, setCurrentSessionId } from './chat'
 import { addRoutine, listRoutines, removeRoutine, toggleRoutine } from './routines'
 import { addEvent, listEvents, listUpcoming, parseWhen, removeEvent, updateEvent } from './calendar'
@@ -157,37 +148,6 @@ export function registerCoreHandlers(): void {
   ipcMain.handle('memory:clear', (_e, tier?: MemoryTier): number => memory.clear(tier))
   ipcMain.handle('memory:export', (): string => memory.export())
   ipcMain.handle('memory:prune', (): number => memory.pruneExpired())
-
-  ipcMain.handle('float:toggle', () => {
-    toggleFloat()
-    return true
-  })
-  ipcMain.handle('float:alwaysOnTop', (_e, flag: boolean) => {
-    setFloatAlwaysOnTop(flag)
-    return true
-  })
-  ipcMain.handle('float:close', () => {
-    closeFloat()
-    return true
-  })
-  ipcMain.handle('float:open', () => {
-    openFloat()
-    return true
-  })
-  ipcMain.handle('float:clickThrough', (_e, flag: boolean) => {
-    setFloatClickThrough(flag)
-    const c = loadConfig()
-    saveConfig({ ...c, float: { ...c.float, clickThrough: flag } })
-    return true
-  })
-  ipcMain.handle('float:reposition', (_e, x: number, y: number) => {
-    repositionFloat(x, y)
-    return true
-  })
-  ipcMain.handle('float:resize', (_e, w: number, h: number) => {
-    resizeFloat(w, h)
-    return true
-  })
 
   ipcMain.on('hotkey:pressed', (_e, key: string) => {
     activity.log('hotkey', `Hotkey pressed: ${key}`)

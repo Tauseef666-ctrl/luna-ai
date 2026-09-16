@@ -36,12 +36,6 @@ const DEFAULTS: LunaConfig = {
     mode: 'ptt',
     sensitivity: 0.5
   },
-  float: {
-    width: 360,
-    height: 520,
-    clickThrough: false,
-    opacity: 1
-  },
   automation: {
     confirm: true,
     proactive: false,

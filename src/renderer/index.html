@@ -38,7 +38,6 @@
             ⚡ LUNA
           </button>
           <button id="btn-theme" class="icon-btn" title="Toggle light/dark theme">◐</button>
-          <button id="btn-float" class="icon-btn">Float</button>
         </header>
 
         <section id="view-dashboard" class="view active">
@@ -82,7 +81,7 @@
             </div>
             <p id="status-line" class="stage-status">Ready to assist...</p>
             <p class="ptt-hint stage-hint">
-              push-to-talk (spec 32.3) · switch AI with ⚡ · drag characters in the floating window
+              push-to-talk (spec 32.3) · switch AI with ⚡ · hold Space or the global hotkey to talk
             </p>
           </div>
         </section>
@@ -397,28 +396,7 @@
               </div>
 
               <div class="set-panel" id="set-character">
-                <h3 class="sub">Floating window (applies next time it opens)</h3>
-                <div class="assign-grid">
-                  <label class="assign-row">
-                    <span>Width</span>
-                    <input id="cfg-float-w" type="number" min="220" max="800" />
-                  </label>
-                  <label class="assign-row">
-                    <span>Height</span>
-                    <input id="cfg-float-h" type="number" min="320" max="1000" />
-                  </label>
-                  <label class="assign-row">
-                    <span>Opacity</span>
-                    <input id="cfg-float-opacity" type="number" min="0.4" max="1" step="0.05" />
-                  </label>
-                  <label class="assign-row">
-                    <span>Click-through (ghost)</span>
-                    <select id="cfg-float-ghost">
-                      <option value="false">Off</option>
-                      <option value="true">On</option>
-                    </select>
-                  </label>
-                </div>
+                <h3 class="sub">Character assets</h3>
                 <div id="asset-chars" class="asset-section"></div>
                 <div id="asset-anim" class="asset-section"></div>
                 <div id="asset-ref" class="asset-section"></div>

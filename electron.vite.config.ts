@@ -8,8 +8,7 @@ export default defineConfig({
     build: {
       rollupOptions: {
         input: {
-          index: resolve('src/renderer/index.html'),
-          float: resolve('src/renderer/float.html')
+          index: resolve('src/renderer/index.html')
         }
       }
     }

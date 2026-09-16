@@ -28,12 +28,6 @@ export interface LunaConfig {
     mode: 'ptt' | 'always' | 'wake'
     sensitivity: number
   }
-  float: {
-    width: number
-    height: number
-    clickThrough: boolean
-    opacity: number
-  }
   automation: {
     confirm: boolean
     proactive: boolean

@@ -7,7 +7,7 @@ import { startScheduler, tick, listRoutines, addRoutine, removeRoutine, toggleRo
 import { ollamaHealth, listOllamaModels } from './ollama'
 import { stopSpeaking } from './tts'
 import { createTray } from './tray'
-import { hideDashboard, openDashboard, toggleFloat } from './ui'
+import { openDashboard } from './ui'
 import { setState } from './state'
 import { registerPermissionHandler } from './permission'
 import { registerCoreHandlers } from './handlers-core'
@@ -51,7 +51,6 @@ app.whenReady().then(() => {
   registerHotkeys()
 
   createTray({
-    toggleFloat,
     showDashboard: openDashboard,
     isStartWithWindows: () => app.getLoginItemSettings().openAtLogin,
     setStartWithWindows: (enabled) => {
@@ -65,7 +64,7 @@ app.whenReady().then(() => {
   })
 
   // §10/§25 background service: with "start minimized", run tray-only (no
-  // dashboard/float window) until summoned by hotkey/tray — zero rig rendering.
+  // dashboard window) until summoned by hotkey/tray — zero rig rendering.
   if (cfg.background.startMinimized) {
     activity.log('app', 'Background start — tray only, dashboard closed until summoned')
   } else {

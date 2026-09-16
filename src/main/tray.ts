@@ -2,7 +2,6 @@ import { Menu, Tray, app, nativeImage } from 'electron'
 import { join } from 'node:path'
 
 export interface TrayHandlers {
-  toggleFloat: () => void
   showDashboard: () => void
   isStartWithWindows: () => boolean
   setStartWithWindows: (enabled: boolean) => void
@@ -22,8 +21,7 @@ export function createTray(handlers: TrayHandlers): Tray {
   const tray = new Tray(image)
   tray.setToolTip('LUNA — AI Companion')
   const menu = Menu.buildFromTemplate([
-    { label: 'Open Assistant', click: handlers.toggleFloat },
-    { label: 'Open Dashboard', click: handlers.showDashboard },
+    { label: 'Open LUNA', click: handlers.showDashboard },
     { type: 'separator' },
     {
       label: 'Start with Windows',
@@ -35,7 +33,7 @@ export function createTray(handlers: TrayHandlers): Tray {
     { label: 'Quit', click: handlers.quit }
   ])
   tray.setContextMenu(menu)
-  tray.on('double-click', handlers.toggleFloat)
+  tray.on('double-click', handlers.showDashboard)
   return tray
 }
 

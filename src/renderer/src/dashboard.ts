@@ -1015,11 +1015,6 @@ function renderPipeline(): HTMLElement {
       state: 'done'
     },
     {
-      title: 'Interactivity',
-      desc: 'Floating window: drag LUNA & Shoya anywhere to reposition them',
-      state: 'done'
-    },
-    {
       title: 'Voice + lip-sync',
       desc: 'TTS pipe wires the speaking equalizer + mouth rhythm (voice engine pending)',
       state: 'auto'
@@ -1542,10 +1537,6 @@ function renderSettings(): void {
       $<HTMLSelectElement>('cfg-tts-auto').value = String(c.tts.autoSpeak)
       $<HTMLInputElement>('cfg-tts-length').value = String(c.tts.lengthScale)
       $<HTMLSelectElement>('cfg-guest').value = String(c.voiceId?.guest ?? false)
-      $<HTMLInputElement>('cfg-float-w').value = String(c.float?.width ?? 360)
-      $<HTMLInputElement>('cfg-float-h').value = String(c.float?.height ?? 520)
-      $<HTMLInputElement>('cfg-float-opacity').value = String(c.float?.opacity ?? 1)
-      $<HTMLSelectElement>('cfg-float-ghost').value = String(c.float?.clickThrough ?? false)
       $<HTMLInputElement>('cfg-mem-days').value = String(c.memory?.sessionDays ?? 7)
       $<HTMLSelectElement>('cfg-mem-autosave').value = String(c.memory?.autoSave ?? false)
       $<HTMLSelectElement>('cfg-mem-ask').value = String(c.memory?.askBeforeDelete ?? true)
@@ -1677,26 +1668,6 @@ function bindSettings(): void {
       .config.get()
       .then((c) => luna().config.set({ ...c, voiceId: { ...c.voiceId, guest: v === 'true' } }))
   })
-  bindNum('cfg-float-w', (v) => {
-    void luna()
-      .config.get()
-      .then((c) => luna().config.set({ ...c, float: { ...c.float, width: v } }))
-  })
-  bindNum('cfg-float-h', (v) => {
-    void luna()
-      .config.get()
-      .then((c) => luna().config.set({ ...c, float: { ...c.float, height: v } }))
-  })
-  bindNum('cfg-float-opacity', (v) => {
-    void luna()
-      .config.get()
-      .then((c) => luna().config.set({ ...c, float: { ...c.float, opacity: Math.max(0.4, Math.min(1, v)) } }))
-  })
-  bindSel('cfg-float-ghost', (v) => {
-    void luna()
-      .config.get()
-      .then((c) => luna().config.set({ ...c, float: { ...c.float, clickThrough: v === 'true' } }))
-  })
   bindNum('cfg-mem-days', (v) => {
     void luna()
       .config.get()
@@ -1826,7 +1797,7 @@ void luna()
 $('demo-point').addEventListener('click', () => {
   demoLuna.setState('pointing')
   demoShoya.setState('pointing')
-  toast('Simulated character:point — renders as an arrow in the floating window')
+  toast('Simulated character:point — renders as an arrow indicator')
   setTimeout(() => {
     demoLuna.setState('idle')
     demoShoya.setState('idle')
@@ -1885,6 +1856,11 @@ async function stopDashListening(): Promise<void> {
 }
 
 $<HTMLButtonElement>('btn-mic').addEventListener('click', () => {
+  if (dashListening) void stopDashListening()
+  else void startDashListening()
+})
+
+window.luna.onPushToTalk?.(() => {
   if (dashListening) void stopDashListening()
   else void startDashListening()
 })
@@ -2032,8 +2008,6 @@ $<HTMLFormElement>('chat-form').addEventListener('submit', (e) => {
       pending = null
     })
 })
-
-$('btn-float').addEventListener('click', () => void luna().float.toggle())
 
 // ---------- memory controls ----------
 $<HTMLInputElement>('mem-search').addEventListener('input', (e) => {

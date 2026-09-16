@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { basename, join } from 'node:path'
 import { BrowserWindow } from 'electron'
 import type { WebContents } from 'electron'
 import { loadConfig } from './config'
@@ -26,6 +26,24 @@ export function findPiperExe(aiRoot: string): string | null {
 
 export function voiceModelPath(aiRoot: string, voice: string): string {
   return join(aiRoot, 'models', 'piper', `${voice}.onnx`)
+}
+
+/**
+ * Resolve the actual voice to use for speech. Returns the configured voice when
+ * its model file exists, otherwise falls back to the first installed piper
+ * voice (scanned from models\piper\*.onnx.json). Empty when no engine/models
+ * are installed — speech then stays off, reported honestly.
+ */
+export function resolveVoice(aiRoot: string, voice: string): string {
+  if (voice && existsSync(voiceModelPath(aiRoot, voice))) return voice
+  const piperDir = join(aiRoot, 'models', 'piper')
+  try {
+    const found = readdirSync(piperDir).filter((f) => f.endsWith('.onnx.json'))
+    if (found.length > 0) return basename(found[0]).replace('.onnx.json', '')
+  } catch {
+    /* piper dir missing */
+  }
+  return ''
 }
 
 export function voiceSampleRate(aiRoot: string, voice: string): number {
@@ -126,14 +144,16 @@ export function pcmToWav(pcm: Buffer, sampleRate: number): Buffer {
 
 export function speakTo(target: WebContents | null, text: string, voice: string): void {
   const c = loadConfig()
-  if (!c.tts.enabled || !text || !voice) return
+  if (!c.tts.enabled || !text) return
   if (!findPiperExe(c.aiRoot)) return
+  const resolvedVoice = resolveVoice(c.aiRoot, voice)
+  if (!resolvedVoice) return
   stopSpeaking()
   setState({ char: 'speaking', status: 'Speaking...' })
   for (const win of BrowserWindow.getAllWindows()) {
     if (!win.isDestroyed()) win.webContents.send('tts:started')
   }
-  synthesize(c.aiRoot, voice, text, { lengthScale: c.tts.lengthScale })
+  synthesize(c.aiRoot, resolvedVoice, text, { lengthScale: c.tts.lengthScale })
     .then(({ pcm, sampleRate }) => {
       const wavBase64 = pcmToWav(pcm, sampleRate).toString('base64')
       if (target && !target.isDestroyed()) {

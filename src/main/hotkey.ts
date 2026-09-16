@@ -1,11 +1,11 @@
 import { BrowserWindow, globalShortcut } from 'electron'
 import { loadConfig } from './config'
 import { activity } from './activity'
-import { openFloat } from './ui'
+import { openDashboard } from './ui'
 
 /**
  * §10 push-to-talk: register the configured global hotkey. When pressed, the
- * float window is shown (if not visible) and every renderer is told to begin
+ * dashboard is shown (if not visible) and every renderer is told to begin
  * listening; the mic capture/STT pipeline lives in the renderer, so main only
  * forwards the trigger via 'hotkey:ptt'.
  */
@@ -26,7 +26,7 @@ export function registerHotkeys(): void {
 
   try {
     const handler = (): void => {
-      openFloat()
+      openDashboard()
       for (const win of BrowserWindow.getAllWindows()) {
         if (!win.isDestroyed()) win.webContents.send('hotkey:ptt')
       }

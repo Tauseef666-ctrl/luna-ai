@@ -135,15 +135,6 @@ export interface LunaBridge {
     run(query: string): Promise<ResearchResult>
     news(topics?: string[]): Promise<NewsResult>
   }
-  float: {
-    toggle(): Promise<boolean>
-    open(): Promise<boolean>
-    close(): Promise<boolean>
-    setAlwaysOnTop(flag: boolean): Promise<boolean>
-    clickThrough(flag: boolean): Promise<boolean>
-    reposition(x: number, y: number): Promise<boolean>
-    resize(w: number, h: number): Promise<boolean>
-  }
   sendChat(text: string): Promise<string>
   onChatToken(cb: (chunk: string) => void): void
   onState(cb: (s: AppState) => void): void
@@ -278,15 +269,6 @@ const bridge: LunaBridge = {
   research: {
     run: (query) => ipcRenderer.invoke('research:run', query),
     news: (topics) => ipcRenderer.invoke('research:news', topics)
-  },
-  float: {
-    toggle: () => ipcRenderer.invoke('float:toggle'),
-    open: () => ipcRenderer.invoke('float:open'),
-    close: () => ipcRenderer.invoke('float:close'),
-    setAlwaysOnTop: (flag) => ipcRenderer.invoke('float:alwaysOnTop', flag),
-    clickThrough: (flag) => ipcRenderer.invoke('float:clickThrough', flag),
-    reposition: (x, y) => ipcRenderer.invoke('float:reposition', x, y),
-    resize: (w, h) => ipcRenderer.invoke('float:resize', w, h)
   },
   sendChat: (text) => ipcRenderer.invoke('chat', text),
   onChatToken: (cb) => {

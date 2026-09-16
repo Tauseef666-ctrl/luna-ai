@@ -56,7 +56,6 @@ const SAMPLE_CONFIG: LunaConfig = {
   },
   tts: { enabled: true, autoSpeak: true, lengthScale: 1 },
   voice: { language: 'en', micDevice: '', mode: 'ptt', sensitivity: 0.5 },
-  float: { width: 360, height: 520, clickThrough: false, opacity: 1 },
   automation: { confirm: true, proactive: false, quietStart: '22:00', quietEnd: '07:00' },
   digest: { enabled: true },
   memory: { sessionDays: 7, autoSave: false, askBeforeDelete: true },
@@ -658,15 +657,6 @@ export const mockBridge: LunaBridge = {
           { topic: 'Technology', title: 'Mock headline two', url: 'https://example.com/n2', summary: 'Mock news summary two.' }
         ]
       })
-  },
-  float: {
-    toggle: () => Promise.resolve(true),
-    open: () => Promise.resolve(true),
-    close: () => Promise.resolve(true),
-    setAlwaysOnTop: () => Promise.resolve(true),
-    clickThrough: () => Promise.resolve(true),
-    reposition: () => Promise.resolve(true),
-    resize: () => Promise.resolve(true)
   },
   sendChat: (text) =>
     new Promise<string>((resolve) => {
