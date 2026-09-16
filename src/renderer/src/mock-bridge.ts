@@ -820,6 +820,12 @@ export const mockBridge: LunaBridge = {
     input: () => {},
     audio: () => {}
   },
+  voiceId: {
+    status: () => Promise.resolve({ enabled: false, guest: false, enrolled: false }),
+    enroll: () => Promise.resolve({ ok: true, reason: 'Mock enrollment' }),
+    verify: () => Promise.resolve({ enrolled: false, match: true, score: 0 }),
+    clear: () => Promise.resolve(true)
+  },
   hotkey: {
     pressed: () => {}
   },
@@ -836,5 +842,6 @@ export const mockBridge: LunaBridge = {
   onVoiceHeard: (cb) => {
     voiceHeardListeners.push(cb)
   },
-  setCharacterState: () => {}
+  setCharacterState: () => {},
+  onPushToTalk: () => {}
 }

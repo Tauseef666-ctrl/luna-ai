@@ -425,6 +425,16 @@ $('btn-mic').addEventListener('click', () => {
   else startListening()
 })
 
+window.luna.onPushToTalk?.(() => {
+  const mode = document.body.dataset.voiceMode ?? 'ptt'
+  if (transcribing || (listening && mode !== 'ptt')) return
+  if (mode === 'ptt' && listening) {
+    stopListening()
+  } else {
+    startListening()
+  }
+})
+
 function bargeIn(): void {
   stopAudio()
   void window.luna.tts.stop()
@@ -532,6 +542,7 @@ void window.luna.config.get().then((c) => {
     shoya.highlight(activeAi === 'shoya')
   }
   voiceLang = c.voice?.language ?? 'en'
+  document.body.dataset.voiceMode = c.voice?.mode ?? 'ptt'
   document.body.dataset.theme = c.theme === 'light' ? 'light' : 'dark'
   const frame = document.querySelector('.float-frame') as HTMLElement | null
   if (frame && typeof c.float?.opacity === 'number') frame.style.opacity = String(c.float.opacity)

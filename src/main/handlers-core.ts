@@ -18,6 +18,7 @@ import { ensureCurrentSession, getCurrentSessionId, setCurrentSessionId } from '
 import { addRoutine, listRoutines, removeRoutine, toggleRoutine } from './routines'
 import { addEvent, listEvents, listUpcoming, parseWhen, removeEvent, updateEvent } from './calendar'
 import { isClipboardEnabled, readClipboard, writeClipboard } from './clipboard'
+import { refreshHotkeys } from './hotkey'
 import {
   browserClose,
   browserExtract,
@@ -37,6 +38,7 @@ export function registerCoreHandlers(): void {
   ipcMain.handle('config:set', (_e, c: Parameters<typeof saveConfig>[0]) => {
     saveConfig(c)
     activity.log('config', 'Settings updated')
+    refreshHotkeys()
   })
   ipcMain.handle('scan', () => {
     activity.log('scan', 'Workspace re-scanned')

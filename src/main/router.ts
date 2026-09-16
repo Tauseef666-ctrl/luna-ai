@@ -207,6 +207,69 @@ function extractUrl(text: string): string {
   return m ? m[0] : ''
 }
 
+const COMPOUND_CONNECTORS = /\b(?:and|then|also|after that|next|,)\b/i
+const INTENT_ANCHOR = /\b(?:open|launch|start|focus|switch to|minimize|maximize|kill|close|remind|schedule|add\s+(?:an?\s+)?(?:event|meeting|appointment)|copy|paste|search|research|look up|read the|fill the|click the|extract|summarize|browse|navigate|check email|send email|draft|remember|recall|forget|run\s+command|what\s+did\s+i\s+miss|catch\s+me\s+up|digest|do\s+you\s+know)\b/i
+
+/**
+ * §32.8 Multi-step orchestration: detect compound requests like
+ * "open chrome and remind me to push at 3pm", split them into individual
+ * sub-tasks, classify each one, and return them for sequential execution.
+ * Returns null when the text is clearly a single intent.
+ */
+export function planCompound(text: string): RouterTask[] | null {
+  const parts = text
+    .split(COMPOUND_CONNECTORS)
+    .map((s) => s.replace(/^[,;]|[,;]$/g, '').trim())
+    .filter(Boolean)
+
+  if (parts.length < 2) return null
+
+  const tasks = parts.map((p) => classify(p))
+
+  const taskCount = tasks.filter((t) => t.target !== 'chat').length
+  if (taskCount < 2) return null
+
+  const hasAnchor = parts.some((p) => INTENT_ANCHOR.test(p.toLowerCase()))
+  if (!hasAnchor) return null
+
+  activity.log('router', `Multi-step plan: ${parts.length} sub-tasks detected`)
+  return tasks.map((t, i) => ({ ...t, params: { ...t.params, prompt: parts[i] } }))
+}
+
+export interface OrchestrationStep {
+  task: RouterTask
+  result: RouteResult
+}
+
+/**
+ * Execute a multi-step plan sequentially. If any step fails, execution
+ * continues (the user still gets the remaining steps) and the failure
+ * is reported honestly in the combined output.
+ */
+export async function orchestrate(tasks: RouterTask[]): Promise<RouteResult> {
+  const results: OrchestrationStep[] = []
+  for (const task of tasks) {
+    const result = await route(task.params.prompt ?? '')
+    results.push({ task, result })
+  }
+  return formatOrchestrationResult(results)
+}
+
+function formatOrchestrationResult(steps: OrchestrationStep[]): RouteResult {
+  const lines = steps.map((s, i) => {
+    const status = s.result.ok ? 'done' : 'failed'
+    const target = s.task.target
+    return `[${i + 1}/${steps.length}] ${target}: ${status} — ${s.result.output}`
+  })
+  const allOk = steps.every((s) => s.result.ok)
+  return {
+    target: 'orchestration',
+    ok: allOk,
+    output: lines.join('\n\n'),
+    providerId: steps.map((s) => s.result.providerId).filter(Boolean).join(', ')
+  }
+}
+
 function withNext(r: { output: string; next?: string }): string {
   return r.next ? `${r.output} Next: ${r.next}` : r.output
 }
@@ -259,6 +322,9 @@ async function lunaReply(text: string): Promise<RouteResult> {
 }
 
 export async function route(text: string): Promise<RouteResult> {
+  const compound = planCompound(text)
+  if (compound) return orchestrate(compound)
+
   const task = classify(text)
   activity.log('router', `Task → ${task.target} (${Math.round(task.confidence * 100)}% ${task.reason})`)
 

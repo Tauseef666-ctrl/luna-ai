@@ -198,6 +198,12 @@ export interface LunaBridge {
     input(text: string, language: string): void
     audio(wavBase64: string, sampleRate: number, language: string): void
   }
+  voiceId: {
+    status(): Promise<{ enabled: boolean; guest: boolean; enrolled: boolean }>
+    enroll(wavBase64: string): Promise<{ ok: boolean; reason: string; frames?: number }>
+    verify(wavBase64: string): Promise<{ enrolled: boolean; match: boolean; score: number }>
+    clear(): Promise<boolean>
+  }
   hotkey: {
     pressed(key: string): void
   }
@@ -209,6 +215,7 @@ export interface LunaBridge {
   }
   onVoiceHeard(cb: (p: { text: string; language: string }) => void): void
   setCharacterState(character: CharId, state: CharState): void
+  onPushToTalk(cb: () => void): void
 }
 
 const bridge: LunaBridge = {
@@ -390,6 +397,12 @@ const bridge: LunaBridge = {
     audio: (wavBase64, sampleRate, language) =>
       ipcRenderer.send('voice:audio', { wavBase64, sampleRate, language })
   },
+  voiceId: {
+    status: () => ipcRenderer.invoke('voiceId:status'),
+    enroll: (wavBase64) => ipcRenderer.invoke('voiceId:enroll', wavBase64),
+    verify: (wavBase64) => ipcRenderer.invoke('voiceId:verify', wavBase64),
+    clear: () => ipcRenderer.invoke('voiceId:clear')
+  },
   hotkey: {
     pressed: (key) => ipcRenderer.send('hotkey:pressed', key)
   },
@@ -402,7 +415,10 @@ const bridge: LunaBridge = {
   onVoiceHeard: (cb) => {
     ipcRenderer.on('voice:heard', (_e: IpcRendererEvent, p: { text: string; language: string }) => cb(p))
   },
-  setCharacterState: (character, state) => ipcRenderer.send('character:set', { character, state })
+  setCharacterState: (character, state) => ipcRenderer.send('character:set', { character, state }),
+  onPushToTalk: (cb) => {
+    ipcRenderer.on('hotkey:ptt', () => cb())
+  }
 }
 
 contextBridge.exposeInMainWorld('luna', bridge)

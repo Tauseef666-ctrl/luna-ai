@@ -158,6 +158,7 @@ export type RouterTarget =
   | 'email'
   | 'browser'
   | 'chat'
+  | 'orchestration'
 
 export interface RouteResult {
   target: RouterTarget

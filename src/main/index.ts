@@ -13,6 +13,7 @@ import { registerPermissionHandler } from './permission'
 import { registerCoreHandlers } from './handlers-core'
 import { registerAiHandlers } from './handlers-ai'
 import { registerVoiceHandlers } from './voice'
+import { registerHotkeys } from './hotkey'
 
 async function refreshOllama(): Promise<void> {
   const cfg = loadConfig()
@@ -47,6 +48,7 @@ app.whenReady().then(() => {
   registerVoiceHandlers()
 
   startScheduler()
+  registerHotkeys()
 
   createTray({
     toggleFloat,

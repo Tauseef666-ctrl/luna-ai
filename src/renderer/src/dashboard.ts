@@ -1590,9 +1590,20 @@ function bindSettings(): void {
       .then((c) => luna().config.set({ ...c, theme: v as 'dark' | 'light' }))
   })
   bindSel('cfg-wakeword', (v) => {
+    const on = v === 'on'
     void luna()
       .config.get()
-      .then((c) => luna().config.set({ ...c, wakeWordEnabled: v === 'on' }))
+      .then((c) => luna().config.set({ ...c, wakeWordEnabled: on }))
+      .then(() => luna().voiceId.status())
+      .then((s) => {
+        if (on && !s.enrolled) {
+          const recordNow = confirm(
+            'Wake word activation is gated to your voice, but no voiceprint is enrolled yet. Record one now?'
+          )
+          if (recordNow) void recordAndEnroll()
+        }
+        return s
+      })
   })
   bindSel('cfg-voice-mode', (v) => {
     void luna()
@@ -1737,38 +1748,77 @@ function bindSettings(): void {
   })
 }
 
-// ---------- speaker enrollment stub (§32.4) ----------
-let enrolled = false
-function setEnrolled(on: boolean): void {
-  enrolled = on
-  $<HTMLButtonElement>('enroll-btn').textContent = on ? 'Recorded' : 'Record sample'
-  $<HTMLButtonElement>('re-enroll-btn').disabled = !on
-  $('enroll-state').textContent = on
-    ? 'Voice sample recorded — voiceprint stored locally. Wake word will only activate for your voice.'
-    : 'Not enrolled. Enroll a short voice sample so the wake word only activates for your voice.'
+// ---------- speaker enrollment (§32.4, real on-device voiceprint) ----------
+let enrolling = false
+
+function applyVoiceIdStatus(status: { enabled: boolean; guest: boolean; enrolled: boolean }): void {
+  const btn = $<HTMLButtonElement>('enroll-btn')
+  btn.classList.toggle('on', status.enrolled)
+  $<HTMLButtonElement>('re-enroll-btn').disabled = !status.enrolled
+  $('enroll-state').textContent = status.enrolled
+    ? 'Voiceprint stored locally (<aiRoot>/memory/voiceprint.json). Voice ID is on — LUNA only acts for the enrolled voice.'
+    : 'Not enrolled. Record a ~3 second sample of your voice; the voiceprint is stored locally and Voice ID will gate automations.'
+}
+
+async function recordAndEnroll(): Promise<void> {
+  if (enrolling) return
+  const btn = $<HTMLButtonElement>('enroll-btn')
+  btn.classList.add('recording')
+  btn.disabled = true
+  $<HTMLButtonElement>('re-enroll-btn').disabled = true
+  $('enroll-state').textContent = 'Recording... speak a normal sentence for about 3 seconds, then I stop automatically.'
+  enrolling = true
+
+  const ok = await voiceCapture.start()
+  if (!ok) {
+    btn.classList.remove('recording')
+    btn.disabled = false
+    enrolling = false
+    $('enroll-state').textContent = 'Mic unavailable. Could not start recording — check device permissions.'
+    return
+  }
+  await new Promise((r) => setTimeout(r, 3200))
+  const wav = await voiceCapture.stop()
+  btn.classList.remove('recording')
+  btn.disabled = false
+  enrolling = false
+
+  if (!wav) {
+    $('enroll-state').textContent = 'Recording failed — no audio captured. Try again.'
+    return
+  }
+
+  $('enroll-state').textContent = 'Analyzing speech... (extracting pitch / energy features locally)'
+  const res = await luna().voiceId.enroll(wav)
+  if (res.ok) {
+    $('enroll-state').textContent = 'Voiceprint stored locally. Voice ID is now enabled.'
+    applyVoiceIdStatus({ enabled: true, guest: false, enrolled: true })
+    toast('Voiceprint recorded, analyzed and stored on-device (no upload)', 'success')
+  } else {
+    const retry = confirm(`${res.reason}\n\nTry recording again?`)
+    if (retry) void recordAndEnroll()
+    const status = await luna().voiceId.status()
+    applyVoiceIdStatus(status)
+  }
 }
 
 $('enroll-btn').addEventListener('click', () => {
-  if (enrolled) return
-  const btn = $<HTMLButtonElement>('enroll-btn')
-  btn.classList.add('recording')
-  $('enroll-state').textContent = 'Recording... speak for about 3 seconds.'
-  setTimeout(() => {
-    btn.classList.remove('recording')
-    setEnrolled(true)
-    toast('Voice sample recorded — voiceprint saved (local only)', 'success')
-  }, 3000)
+  void recordAndEnroll()
 })
 
 $('re-enroll-btn').addEventListener('click', () => {
-  setEnrolled(false)
-  $<HTMLButtonElement>('enroll-btn').click()
+  applyVoiceIdStatus({ enabled: false, guest: false, enrolled: false })
+  void recordAndEnroll()
 })
 
 void luna()
-  .config.get()
+  .voiceId
+  .status()
+  .then((s) => {
+    applyVoiceIdStatus(s)
+    return luna().config.get()
+  })
   .then((c) => {
-    setEnrolled(!!c.voiceId?.enabled)
     void refreshAiCards()
   })
 
