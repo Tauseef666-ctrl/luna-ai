@@ -11,12 +11,13 @@ export interface Character2D {
 }
 
 // Chroma-key a flat near-solid background out of an image (canvas pass).
-// Used for the floating-window busts (img1/img2) which ship with a beige
-// backdrop and no alpha channel. Flood-fills only from the image borders so
-// similar-colored pixels inside the character (skin, hair) are preserved.
+// Used for the floating-window busts which ship with a flat backdrop and no
+// alpha channel. Flood-fills only from the image borders so similar-colored
+// pixels inside the character (skin, hair) are preserved. When keyColor is
+// omitted, the background color is sampled from the image corners.
 export async function removeFlatBackground(
   src: string,
-  keyColor: [number, number, number],
+  keyColor?: [number, number, number],
   tolerance = 42
 ): Promise<string> {
   return new Promise<string>((resolve) => {
@@ -35,6 +36,18 @@ export async function removeFlatBackground(
       const px = data.data
       const w = c.width
       const h = c.height
+      if (!keyColor) {
+        const at = (x: number, y: number): [number, number, number] => {
+          const i = (y * w + x) * 4
+          return [px[i], px[i + 1], px[i + 2]]
+        }
+        const corners = [at(0, 0), at(w - 1, 0), at(0, h - 1), at(w - 1, h - 1)]
+        keyColor = [
+          Math.round(corners.reduce((s, p) => s + p[0], 0) / 4),
+          Math.round(corners.reduce((s, p) => s + p[1], 0) / 4),
+          Math.round(corners.reduce((s, p) => s + p[2], 0) / 4)
+        ]
+      }
       const [kr, kg, kb] = keyColor
       const thresh = tolerance * 3
       const seen = new Uint8Array(w * h)

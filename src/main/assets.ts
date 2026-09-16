@@ -7,10 +7,12 @@ function isInside(root: string, target: string): boolean {
   return t === r || t.startsWith(r + sep)
 }
 
+const ART_DIRS = ['reference', 'characters']
+
 export function safeImageDataUrl(aiRoot: string, relPath: string): string {
-  const refDir = join(aiRoot, 'reference')
   const full = resolve(aiRoot, relPath)
-  if (!isInside(refDir, full) || !existsSync(full)) return ''
+  const allowed = ART_DIRS.some((d) => isInside(join(aiRoot, d), full))
+  if (!allowed || !existsSync(full)) return ''
   const ext = extname(full).toLowerCase()
   const mime =
     ext === '.png'

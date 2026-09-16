@@ -106,10 +106,11 @@ export function scanWorkspace(root: string): ScanResult {
     })
   }
 
-  // Reference concept art (look reference only, never runtime assets)
-  const refDir = join(root, 'reference')
-  if (existsSync(refDir)) {
-    walk(refDir, 0, (p, isDir) => {
+  // Character art + reference concept art (image assets consumed by the UI)
+  const artDirs = [join(root, 'characters'), join(root, 'reference')]
+  for (const artDir of artDirs) {
+    if (!existsSync(artDir)) continue
+    walk(artDir, 0, (p, isDir) => {
       if (isDir) return
       const ext = extname(p).toLowerCase()
       if (['.png', '.jpg', '.jpeg', '.webp'].includes(ext)) {

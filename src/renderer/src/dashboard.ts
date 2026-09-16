@@ -1080,9 +1080,9 @@ async function loadCharacterArt(): Promise<void> {
     const scan: ScanResult = await luna().scan()
     const refs = scan.reference
     const lunaRef =
-      refs.find((r) => /img3_nishimiya_full/i.test(r.name)) ?? refs.find((r) => /nishimiya/i.test(r.name))
+      refs.find((r) => /nishimiya.*full/i.test(r.name)) ?? refs.find((r) => /nishimiya/i.test(r.name))
     const shoyaRef =
-      refs.find((r) => /img4_shoya_full/i.test(r.name)) ?? refs.find((r) => /shoya/i.test(r.name))
+      refs.find((r) => /shoya.*full/i.test(r.name)) ?? refs.find((r) => /shoya/i.test(r.name))
     const [lu, sy] = await Promise.all([
       lunaRef ? luna().assets.image(lunaRef.path) : Promise.resolve(''),
       shoyaRef ? luna().assets.image(shoyaRef.path) : Promise.resolve('')

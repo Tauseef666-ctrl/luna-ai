@@ -44,18 +44,18 @@ let listening = false
 async function loadArt(): Promise<void> {
   try {
     const scan = await window.luna.scan()
-    const lunaRef = scan.reference.find((r) => /img1_nishimiya/i.test(r.name))
-    const shoyaRef = scan.reference.find((r) => /img2_shoya/i.test(r.name))
+    const lunaRef = scan.reference.find((r) => /nishimiya.*(floating|float)/i.test(r.name))
+    const shoyaRef = scan.reference.find((r) => /shoya.*(floating|float)/i.test(r.name))
     const [lunaRaw, shoyaRaw] = await Promise.all([
       lunaRef ? window.luna.assets.image(lunaRef.path) : Promise.resolve(''),
       shoyaRef ? window.luna.assets.image(shoyaRef.path) : Promise.resolve('')
     ])
     if (lunaRaw) {
-      const cleaned = await removeFlatBackground(lunaRaw, [235, 230, 218])
+      const cleaned = await removeFlatBackground(lunaRaw)
       luna.setImage(cleaned)
     }
     if (shoyaRaw) {
-      const cleaned = await removeFlatBackground(shoyaRaw, [235, 230, 218])
+      const cleaned = await removeFlatBackground(shoyaRaw)
       shoya.setImage(cleaned)
     }
   } catch {

@@ -251,21 +251,26 @@ const SAMPLE_SCAN: ScanResult = {
   animations: [],
   reference: [
     {
-      name: 'img1_nishimiya.png',
-      path: 'D:\\own-ai\\reference\\img1_nishimiya.png',
-      kind: 'reference',
-      size: 0
-    },
-    { name: 'img2_shoya.png', path: 'D:\\own-ai\\reference\\img2_shoya.png', kind: 'reference', size: 0 },
-    {
-      name: 'img3_nishimiya_full.png',
-      path: 'D:\\own-ai\\reference\\img3_nishimiya_full.png',
+      name: 'nishimiya floating.png',
+      path: 'D:\\own-ai\\characters\\nishimiya floating.png',
       kind: 'reference',
       size: 0
     },
     {
-      name: 'img4_shoya_full.png',
-      path: 'D:\\own-ai\\reference\\img4_shoya_full.png',
+      name: 'shoya floating.png',
+      path: 'D:\\own-ai\\characters\\shoya floating.png',
+      kind: 'reference',
+      size: 0
+    },
+    {
+      name: 'nishimiya full.png',
+      path: 'D:\\own-ai\\characters\\nishimiya full.png',
+      kind: 'reference',
+      size: 0
+    },
+    {
+      name: 'shoya full.png',
+      path: 'D:\\own-ai\\characters\\shoya full.png',
       kind: 'reference',
       size: 0
     }

@@ -11,7 +11,7 @@ Dev workflow: VS Code (native Windows) + Shoya coding agent → Git → GitHub A
 >
 > **Operating model:** see [`agents.md`](agents.md) — two agents (A = core/backend, B = experience/renderer) build to one shared contract (`src/shared/types.ts`). Per-agent plan files (`plan code A`, `plan experence B.txt`) were removed (commit `2a8c01c`); **this `plan.md` is the master running status.**
 >
-> **Latest (2026-09-15):** v0.5.0 prep — env verification: **Piper ✓** (TTS→WAV verified), **Ollama ✓** (0.34.0, serving on 11434, models on D), **Whisper ✗** (SAC — deferred), **Three.js experiment removed** (cleanup done). Repo audit → **§2g**; IPC refactor → **§2h**; **AI Provider System (§4) → §2i**; **Shoya panel + routing → §2j**; **Tools/permissions → §2k**; **Action self-verification (§32.3) → §2l**; **Background service tray-only start + Win-start toggle (§10/§25) → §2m**. Overall scope ≈ **65%** (97 plan items done; big remaining: rigged 2D live rig, STT [deferred], true transparency, §32.1/32.2/32.4/32.6/32.7, orchestration).
+> **Latest (2026-09-16):** **Character art wired from `D:\own-ai\characters\`** (user-pasted PNGs now the live LUNA/Shoya visuals; scanner + `safeImageDataUrl` + float/dashboard matchers + mock updated; auto key-color on background removal) → **§2n**. **Latest (2026-09-15):** v0.5.0 prep — env verification: **Piper ✓** (TTS→WAV verified), **Ollama ✓** (0.34.0, serving on 11434, models on D), **Whisper ✗** (SAC — deferred), **Three.js experiment removed** (cleanup done). Repo audit → **§2g**; IPC refactor → **§2h**; **AI Provider System (§4) → §2i**; **Shoya panel + routing → §2j**; **Tools/permissions → §2k**; **Action self-verification (§32.3) → §2l**; **Background service tray-only start + Win-start toggle (§10/§25) → §2m**. Overall scope ≈ **65%** (97 plan items done; big remaining: rigged 2D live rig, STT [deferred], true transparency, §32.1/32.2/32.4/32.6/32.7, orchestration).
 
 ---
 
@@ -34,7 +34,7 @@ Dev workflow: VS Code (native Windows) + Shoya coding agent → Git → GitHub A
 - [x] STT (faster-whisper): `base`, `base.en`, `small` model files — `D:\own-ai\models\whisper\`; **runtime blocked on this machine by Smart App Control** (§4.1, decision needed)
 - [x] TTS (Piper ONNX voices): `en_US-amy` (F), `en_US-ryan` (M), `hi_IN-priyamvada` (F), `hi_IN-rohan` (M), `ur_PK-aegis_female` (F), `ur_PK-fasih` (M)
 - [x] Wake-word ONNX models: `hey_jarvis_*.onnx` — **NOT reused** (§32.3)
-- [x] Reference concept art moved to `D:\own-ai\reference\` with spec names (§2.3): `img1_nishimiya.png`, `img2_shoya.png`, `img3_nishimiya_full.png`, `img4_shoya_full.png` — **look reference only, never runtime assets**
+- [x] Reference concept art — **now the live character PNGs the user pasted into `D:\own-ai\characters\`** (2026-09-16, §2n): `nishimiya floating.png`, `nishimiya full.png`, `shoya floating.png`, `shoya full.png`. Older spec-name copies (`img1`–`img4` in `reference\`) no longer exist; matcher/scanner/`safeImageDataUrl` updated accordingly (images loaded from `characters` + `reference`).
 
 ### Workspace / Repo (done in v0.1.0)
 - [x] Git repo initialized at `D:\own-ai\` with remote `origin` → luna-ai; old `main` history, `backup` branch and tags **deleted** (fresh start)
@@ -243,6 +243,21 @@ Tray + hotkey + "keep running with no windows" already existed; this increment c
 - `tray.ts`: replaced the disabled "Pause Listening" placeholder with a working **Start with Windows** checkbox toggle (reads `getLoginItemSettings().openAtLogin`, persists via config `background.startWithWindows`, reapplies `setLoginItemSettings` with `openAsHidden`).
 - `index.ts`: `setLoginItemSettings` uses `openAsHidden: startMinimized` so background starts stay hidden at login.
 - Verified: typecheck ✓, build ✓, smoke boot ✓ (default start → dashboard opens as before).
+
+---
+
+## 2n. Character art wired from `D:\own-ai\characters\` (§2.1–§2.3 — done 2026-09-16)
+
+The user pasted the four working character images directly into `D:\own-ai\characters\` (`nishimiya floating.png` 1.03 MB, `nishimiya full.png` 1.38 MB, `shoya floating.png` 988 KB, `shoya full.png` 1.23 MB — 2026-08-14). The renderer formerly matched spec-name files `img1–img4` that no longer exist, so the app was falling back to silhouette placeholders. This increment makes those PNGs the live visuals:
+
+- `scanner.ts`: art scan now covers `characters/` **and** `reference/` (both pushed into `scan.reference`, the array the UI already filters); live-verified in Node against `D:\own-ai` → all 4 PNGs indexed.
+- `assets.ts`: `safeImageDataUrl` whitelist extended from `reference/` to `reference/` + `characters/` (security boundary — other dirs still rejected).
+- `float.ts`: floating-window busts match `nishimiya/shhoya …floating`; `removeFlatBackground` now **auto-samples the corner color** when no key color is passed (hardcoded beige [235,230,218] replaced — the new art's backdrop differs), flood-fill from borders unchanged; art failures still fall back to the silhouette rig.
+- `dashboard.ts`: portrait matching prefers `…full` (falls back to any `nishimiya`/`shoya` name).
+- `mock-bridge.ts`: SAMPLE scan mirrors the four real `characters\` paths (design-preview parity).
+- Verified: matcher unit-check (floating→float window, full→dashboard) ✓, typecheck ✓, build ✓, smoke boot ✓ (electron binary re-downloaded by `require('electron')`).
+
+**Art location lesson:** `D:\own-ai\reference\` is empty; the canonical images live in `D:\own-ai\characters\` — plan entries above corrected to match reality.
 
 ---
 
