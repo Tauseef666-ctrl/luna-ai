@@ -3,6 +3,7 @@ import { loadConfig, saveConfig } from './config'
 import { ensureWorkspace } from './scanner'
 import { memory, sessions } from './memory'
 import { activity } from './activity'
+import { startScheduler, tick, listRoutines, addRoutine, removeRoutine, toggleRoutine } from './routines'
 import { ollamaHealth, listOllamaModels } from './ollama'
 import { stopSpeaking } from './tts'
 import { createTray } from './tray'
@@ -44,6 +45,8 @@ app.whenReady().then(() => {
   registerCoreHandlers()
   registerAiHandlers()
   registerVoiceHandlers()
+
+  startScheduler()
 
   createTray({
     toggleFloat,

@@ -23,6 +23,8 @@ import type {
   ResearchResult,
   NewsResult,
   RouteResult,
+  Routine,
+  RoutinePayload,
   ScanResult,
   ShoyaDetection,
   ShoyaRunResult,
@@ -81,6 +83,17 @@ export interface LunaBridge {
     toggle(id: string, enabled: boolean): Promise<boolean>
     run(id: string, query?: string): Promise<SkillRunResult>
   }
+  routines: {
+    list(): Promise<Routine[]>
+    add(input: {
+      kind: Routine['kind']
+      text: string
+      schedule: Routine['schedule']
+    }): Promise<Routine>
+    remove(id: string): Promise<boolean>
+    toggle(id: string, enabled: boolean): Promise<Routine | null>
+  }
+  onProactiveRoutine(cb: (p: RoutinePayload) => void): void
   context: {
     gather(projectDir?: string): Promise<CodingContext>
     block(projectDir?: string): Promise<string>
@@ -313,6 +326,15 @@ const bridge: LunaBridge = {
   },
   onDigest: (cb) => {
     ipcRenderer.on('notification:digest', (_e: IpcRendererEvent, p: DigestPayload) => cb(p))
+  },
+  routines: {
+    list: () => ipcRenderer.invoke('routines:list'),
+    add: (input) => ipcRenderer.invoke('routines:add', input),
+    remove: (id) => ipcRenderer.invoke('routines:remove', id),
+    toggle: (id, enabled) => ipcRenderer.invoke('routines:toggle', id, enabled)
+  },
+  onProactiveRoutine: (cb) => {
+    ipcRenderer.on('proactive:routine', (_e: IpcRendererEvent, p: RoutinePayload) => cb(p))
   },
   voice: {
     input: (text, language) => ipcRenderer.send('voice:input', { text, language }),

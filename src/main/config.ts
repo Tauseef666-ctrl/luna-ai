@@ -44,7 +44,9 @@ const DEFAULTS: LunaConfig = {
   },
   automation: {
     confirm: true,
-    proactive: false
+    proactive: false,
+    quietStart: '',
+    quietEnd: ''
   },
   digest: {
     enabled: true

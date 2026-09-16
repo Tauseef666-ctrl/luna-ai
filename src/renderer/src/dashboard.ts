@@ -13,6 +13,8 @@ import type {
   PermissionRequest,
   ProviderConfig,
   ProviderStatus,
+  Routine,
+  RoutinePayload,
   ScanResult,
   SkillInfo,
   SkillRunResult
@@ -1377,6 +1379,90 @@ function skillCard(s: SkillInfo): HTMLElement {
   return li
 }
 
+// ---------- reminders (§32.1) ----------
+function routineCard(r: Routine, refresh: () => void): HTMLElement {
+  const li = document.createElement('li')
+  li.className = 'provider-card glass'
+
+  const head = document.createElement('div')
+  head.className = 'ai-card-head'
+  const title = document.createElement('h4')
+  title.textContent = r.text
+  const badge = document.createElement('span')
+  badge.className = `session-badge ${r.kind === 'routine' ? 'warn' : 'success'}`
+  badge.textContent = r.kind === 'routine' ? 'ROUTINE' : 'REMINDER'
+  head.append(title, badge)
+  li.appendChild(head)
+
+  const desc = document.createElement('p')
+  desc.className = 'sub'
+  const when =
+    r.schedule.type === 'once'
+      ? `Once — ${new Date(r.schedule.date ?? 0).toLocaleString()}`
+      : `Every ${r.schedule.type} at ${r.schedule.time}`
+  desc.textContent = when + (r.enabled ? '' : ' (paused)')
+  li.appendChild(desc)
+
+  const row = document.createElement('div')
+  row.className = 'assign-row'
+
+  const enLabel = document.createElement('label')
+  const enSel = document.createElement('select')
+  for (const [v, t] of [
+    ['false', 'Off'],
+    ['true', 'On']
+  ] as const) {
+    const o = document.createElement('option')
+    o.value = v
+    o.textContent = t
+    if (String(r.enabled) === v) o.selected = true
+    enSel.appendChild(o)
+  }
+  enSel.value = String(r.enabled)
+  enSel.addEventListener('change', () => {
+    void luna().routines.toggle(r.id, enSel.value === 'true').then(refresh)
+  })
+  enLabel.append('Enabled', enSel)
+
+  const delBtn = document.createElement('button')
+  delBtn.className = 'icon-btn'
+  delBtn.textContent = 'Delete'
+  delBtn.addEventListener('click', () => {
+    void luna().routines.remove(r.id).then(refresh)
+  })
+
+  row.append(enLabel, delBtn)
+  li.appendChild(row)
+  return li
+}
+
+async function renderRoutines(): Promise<void> {
+  const host = $('routines')
+  const head = document.createElement('h3')
+  head.textContent = 'Reminders (spec 32.1)'
+  try {
+    const list = await luna().routines.list()
+    if (list.length === 0) {
+      const empty = document.createElement('div')
+      empty.className = 'empty-state'
+      empty.textContent = 'No reminders yet. Try "remind me to push the build in 2 hours".'
+      host.replaceChildren(head, empty)
+      return
+    }
+    const ul = document.createElement('ul')
+    for (const r of list) ul.appendChild(routineCard(r, () => void renderRoutines()))
+    host.replaceChildren(head, ul)
+  } catch {
+    host.replaceChildren(head)
+  }
+}
+
+function showProactive(p: RoutinePayload): void {
+  toast(`${p.quiet ? 'Queued quietly' : 'Reminder'}: ${p.text}`, p.kind === 'routine' ? 'info' : 'success')
+}
+
+luna().onProactiveRoutine(showProactive)
+
 function renderSettings(): void {
   void luna()
     .config.get()
@@ -1404,7 +1490,10 @@ function renderSettings(): void {
       $<HTMLSelectElement>('cfg-auto-confirm').value = String(c.automation?.confirm ?? true)
       $<HTMLSelectElement>('cfg-auto-proactive').value = String(c.automation?.proactive ?? false)
       $<HTMLSelectElement>('cfg-digest').value = String(c.digest?.enabled ?? true)
+      $<HTMLInputElement>('cfg-quiet-start').value = c.automation?.quietStart ?? ''
+      $<HTMLInputElement>('cfg-quiet-end').value = c.automation?.quietEnd ?? ''
       void renderTtsStatus()
+      void renderRoutines()
       void renderSkills()
     })
 }
@@ -1562,6 +1651,20 @@ function bindSettings(): void {
     void luna()
       .config.get()
       .then((c) => luna().config.set({ ...c, digest: { ...c.digest, enabled: v === 'true' } }))
+  })
+  $<HTMLInputElement>('cfg-quiet-start').addEventListener('change', (e) => {
+    void luna()
+      .config.get()
+      .then((c) =>
+        luna().config.set({ ...c, automation: { ...c.automation, quietStart: (e.target as HTMLInputElement).value } })
+      )
+  })
+  $<HTMLInputElement>('cfg-quiet-end').addEventListener('change', (e) => {
+    void luna()
+      .config.get()
+      .then((c) =>
+        luna().config.set({ ...c, automation: { ...c.automation, quietEnd: (e.target as HTMLInputElement).value } })
+      )
   })
 }
 

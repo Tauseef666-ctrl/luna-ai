@@ -16,6 +16,8 @@ import type {
   PermissionResolved,
   PointPayload,
   ProjectInfo,
+  Routine,
+  RoutinePayload,
   ScanResult,
   SubtitlePayload
 } from '../../shared/types'
@@ -53,7 +55,7 @@ const SAMPLE_CONFIG: LunaConfig = {
   tts: { enabled: true, autoSpeak: true, lengthScale: 1 },
   voice: { language: 'en', micDevice: '', mode: 'ptt', sensitivity: 0.5 },
   float: { width: 360, height: 520, clickThrough: false, opacity: 1 },
-  automation: { confirm: true, proactive: false },
+  automation: { confirm: true, proactive: false, quietStart: '22:00', quietEnd: '07:00' },
   digest: { enabled: true },
   memory: { sessionDays: 7, autoSave: false, askBeforeDelete: true },
   voiceId: { enabled: false, guest: false },
@@ -556,6 +558,26 @@ export const mockBridge: LunaBridge = {
         name: 'Todo list',
         output: `[Skill mock] "${id}" ran with query: ${(query ?? '').slice(0, 80)}. In the real build this executes the manifest's command and returns verified output.`
       })
+  },
+  routines: {
+    list: () => Promise.resolve([] as Routine[]),
+    add: (input) =>
+      Promise.resolve({
+        id: 'mock-routine',
+        kind: input.kind,
+        text: input.text,
+        schedule: input.schedule,
+        enabled: true,
+        createdAt: now
+      } as Routine),
+    remove: () => Promise.resolve(true),
+    toggle: (_id, enabled) =>
+      Promise.resolve({ id: 'mock-routine', kind: 'reminder', text: 'Mock reminder', schedule: { type: 'once', date: now }, enabled, createdAt: now })
+  },
+  onProactiveRoutine: (cb) => {
+    setTimeout(() => {
+      cb({ id: 'mock-routine', kind: 'reminder', text: 'Reminder: push the build in 2 hours', quiet: false } as RoutinePayload)
+    }, 1200)
   },
   context: {
     gather: () =>

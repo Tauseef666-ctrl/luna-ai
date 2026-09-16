@@ -12,6 +12,7 @@ import type {
   LipsyncPayload,
   PermissionRequest,
   PointPayload,
+  RoutinePayload,
   SubtitlePayload
 } from '../../shared/types'
 
@@ -166,6 +167,30 @@ window.luna.onPermissionRequest((p: PermissionRequest) => {
   }
   $('perm-allow').onclick = () => respond(true)
   $('perm-deny').onclick = () => respond(false)
+})
+
+// ---------- proactive routine (§32.1) ----------
+window.luna.onProactiveRoutine((p: RoutinePayload) => {
+  const host = $('float-toasts')
+  const card = document.createElement('div')
+  card.className = 'toast digest'
+  const sum = document.createElement('span')
+  sum.className = 'toast-title'
+  sum.textContent = p.kind === 'routine' ? 'Routine' : 'Reminder'
+  const body = document.createElement('span')
+  body.textContent = p.text
+  if (p.quiet) {
+    const q = document.createElement('span')
+    q.className = 'sub'
+    q.textContent = 'Queued quietly during quiet hours'
+    body.append(q)
+  }
+  card.append(sum, body)
+  host.appendChild(card)
+  setTimeout(() => {
+    card.classList.add('out')
+    setTimeout(() => card.remove(), 350)
+  }, 10000)
 })
 
 // ---------- notification digest ----------

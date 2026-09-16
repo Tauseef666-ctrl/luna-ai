@@ -37,6 +37,8 @@ export interface LunaConfig {
   automation: {
     confirm: boolean
     proactive: boolean
+    quietStart: string
+    quietEnd: string
   }
   digest: {
     enabled: boolean
@@ -147,6 +149,7 @@ export type RouterTarget =
   | 'research'
   | 'skill'
   | 'digest'
+  | 'routine'
   | 'chat'
 
 export interface RouteResult {
@@ -387,6 +390,31 @@ export interface DigestItem {
 export interface DigestPayload {
   summary: string
   items: DigestItem[]
+}
+
+export type RoutineKind = 'reminder' | 'routine'
+
+export interface RoutineSchedule {
+  type: 'once' | 'daily' | 'weekdays'
+  date?: number
+  time?: string
+}
+
+export interface Routine {
+  id: string
+  kind: RoutineKind
+  text: string
+  schedule: RoutineSchedule
+  enabled: boolean
+  createdAt: number
+  lastFired?: number
+}
+
+export interface RoutinePayload {
+  id: string
+  kind: RoutineKind
+  text: string
+  quiet: boolean
 }
 
 export interface VoiceInputPayload {

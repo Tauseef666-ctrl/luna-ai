@@ -8,6 +8,7 @@ import { openInVSCode } from './vscode'
 import { activity } from './activity'
 import { listSkills, runSkill } from './skills'
 import { emitDigest } from './digest'
+import { addRoutine, parseRoutine } from './routines'
 import type { RouteResult, RouterTarget } from '../shared/types'
 
 export interface RouterTask {
@@ -85,6 +86,8 @@ const URL_HINTS = ['open website', 'browse', 'go to https://', 'open http', 'web
 
 const DIGEST_HINTS = ['what did i miss', 'what missed', 'catch me up', 'digest', 'anything new', 'anything since', 'what happened while', 'miss anything', 'missed anything']
 
+const REMINDER_HINTS = ['remind me', 'reminder', 'remind ', 'set a reminder', 'in 2 hours', 'in an hour', 'every weekday', 'every morning', 'every day at', 'daily at']
+
 function classify(text: string): RouterTask {
   const t = text.toLowerCase()
   const isMemory = MEMORY_HINTS.some((h) => t.includes(h))
@@ -99,6 +102,7 @@ function classify(text: string): RouterTask {
   const url = extractUrl(text)
   const isUrl = URL_HINTS.some((h) => t.includes(h)) && Boolean(url)
   const isCommand = t.startsWith('cmd ') || t.startsWith('run command') || t.startsWith('>')
+  const isReminder = REMINDER_HINTS.some((h) => t.includes(h))
 
   if (isCodingExplicit)
     return { target: 'shoya', confidence: 0.98, reason: 'Explicit Shoya/OpenCode mention', params: { prompt: text, tier: 'safe' } }
@@ -106,6 +110,8 @@ function classify(text: string): RouterTask {
     return { target: 'memory', confidence: 0.9, reason: 'Memory intent detected', params: { prompt: text, tier: 'safe' } }
   if (isCommand)
     return { target: 'windows', confidence: 0.95, reason: 'Direct command request', params: { command: text, tier: 'confirm' } }
+  if (isReminder)
+    return { target: 'routine', confidence: 0.9, reason: 'Reminder intent detected', params: { prompt: text, tier: 'safe' } }
   if (isDigest)
     return { target: 'digest', confidence: 0.9, reason: 'What did I miss intent', params: { prompt: text, tier: 'safe' } }
   if (isVscode)
@@ -305,6 +311,28 @@ export async function route(text: string): Promise<RouteResult> {
         }
       const lines = p.items.map((it) => `- ${it.title}`).join('\n')
       return { target: 'digest', ok: true, output: `${p.summary}\n${lines}`, providerId: 'digest' }
+    }
+    case 'routine': {
+      const parsed = parseRoutine(task.params.prompt ?? text)
+      if (!parsed)
+        return {
+          target: 'routine',
+          ok: false,
+          output:
+            'I could not parse a schedule from that. Try "remind me to push the build in 2 hours", "remind me at 3pm", or "remind me every weekday at 9am".',
+          providerId: 'routine'
+        }
+      const r = addRoutine(parsed)
+      const when =
+        parsed.schedule.type === 'once'
+          ? `at ${new Date(parsed.schedule.date ?? 0).toLocaleString()}`
+          : `every ${parsed.schedule.type === 'weekdays' ? 'weekday' : 'day'} at ${parsed.schedule.time}`
+      return {
+        target: 'routine',
+        ok: true,
+        output: `Reminder set: "${r.text}" (${when}). I'll ping you when it fires.`,
+        providerId: 'routine'
+      }
     }
     default:
       return lunaReply(text)

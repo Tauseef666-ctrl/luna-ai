@@ -15,6 +15,7 @@ import {
   toggleFloat
 } from './ui'
 import { ensureCurrentSession, getCurrentSessionId, setCurrentSessionId } from './chat'
+import { addRoutine, listRoutines, removeRoutine, toggleRoutine } from './routines'
 import type {
   ActivityEvent,
   LunaSession,
@@ -69,6 +70,11 @@ export function registerCoreHandlers(): void {
     activity.log('activity', `Activity log cleared (${n} events)`)
     return n
   })
+
+  ipcMain.handle('routines:list', () => listRoutines())
+  ipcMain.handle('routines:add', (_e, input: Parameters<typeof addRoutine>[0]) => addRoutine(input))
+  ipcMain.handle('routines:remove', (_e, id: string) => removeRoutine(id))
+  ipcMain.handle('routines:toggle', (_e, id: string, enabled: boolean) => toggleRoutine(id, enabled))
 
   ipcMain.handle('sessions:list', (): LunaSession[] => sessions.list())
   ipcMain.handle('sessions:current', (): LunaSession => ensureCurrentSession())
